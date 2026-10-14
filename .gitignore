@@ -1,0 +1,35 @@
+.DS_Store
+
+# Laravel
+**/vendor/
+**/.env
+**/.env.*
+!**/.env.example
+
+# Laravel generated/runtime files
+**/storage/framework/cache/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/logs/*
+
+# Node
+**/node_modules/
+**/.next/
+**/dist/
+
+# Flutter
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+
+# BuggyDM generated/dependency files
+BuggyDM/node_modules/
+BuggyDM/.next/
+BuggyDM/out/
+BuggyDM/.env
+BuggyDM/.env.*
+!BuggyDM/.env.example
+BuggyDM/*.tsbuildinfo
+BuggyDM/dump.rdb
