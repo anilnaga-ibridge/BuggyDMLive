@@ -42,7 +42,9 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    try {
+      _mapController?.dispose();
+    } catch (_) {}
     super.dispose();
   }
 

@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer_animation/shimmer_animation.dart';
+import 'package:sixam_mart/common/enums/data_source_enum.dart';
 import 'package:sixam_mart/common/widgets/custom_app_bar.dart';
 import 'package:sixam_mart/common/widgets/menu_drawer.dart';
 import 'package:sixam_mart/common/widgets/not_logged_in_screen.dart';
 import 'package:sixam_mart/features/favourite/controllers/favourite_controller.dart';
+import 'package:sixam_mart/features/favourite/widgets/fav_recommendation_card.dart';
+import 'package:sixam_mart/features/item/controllers/item_controller.dart';
 import 'package:sixam_mart/features/item/domain/models/item_model.dart';
 import 'package:sixam_mart/common/widgets/featured_store_card.dart';
 import 'package:sixam_mart/common/widgets/exclusive_deal_card.dart';
+import 'package:sixam_mart/features/order/controllers/order_controller.dart';
+import 'package:sixam_mart/features/order/domain/models/last_order_model.dart';
+import 'package:sixam_mart/features/order/domain/models/order_details_model.dart';
+import 'package:sixam_mart/features/order/domain/models/order_model.dart';
+import 'package:sixam_mart/features/order/domain/services/order_service_interface.dart';
 import 'package:sixam_mart/features/service_module/common/models/service_provider_model.dart';
 import 'package:sixam_mart/features/service_module/provider_details/widgets/provider_service_item_widget.dart';
 import 'package:sixam_mart/features/service_module/service_home/domain/models/service_model.dart';
 import 'package:sixam_mart/features/service_module/service_home/widgets/service_verified_provider_card_widget.dart';
 import 'package:sixam_mart/features/splash/controllers/splash_controller.dart';
+import 'package:sixam_mart/features/store/controllers/store_controller.dart';
 import 'package:sixam_mart/features/store/domain/models/store_model.dart';
 import 'package:sixam_mart/helper/auth_helper.dart';
 import 'package:sixam_mart/helper/route_helper.dart';
@@ -33,6 +42,14 @@ class FavouriteScreen extends StatefulWidget {
 class FavouriteScreenState extends State<FavouriteScreen> {
   _FavFilter _selectedFilter = _FavFilter.items;
 
+  bool _isRecommendationsLoading = true;
+  List<Item> _recommendedItems = [];
+  List<Item> _orderHistoryItems = [];
+  Map<int, int> _itemOrderFrequency = {};
+  List<Store> _orderHistoryStores = [];
+  List<Store> _recommendedStores = [];
+  String _activeRecommendationFilter = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +59,222 @@ class FavouriteScreenState extends State<FavouriteScreen> {
   void _initCall() {
     if (AuthHelper.isLoggedIn()) {
       Get.find<FavouriteController>().getFavouriteList();
+      _loadOrderHistoryAndRecommendations();
+    }
+  }
+
+  Future<void> _loadOrderHistoryAndRecommendations() async {
+    if (!mounted) return;
+    setState(() => _isRecommendationsLoading = true);
+
+    try {
+      final OrderServiceInterface orderServiceInterface = Get.find<OrderServiceInterface>();
+      final ItemController itemController = Get.find<ItemController>();
+      final StoreController storeController = Get.find<StoreController>();
+      final OrderController orderController = Get.find<OrderController>();
+      final SplashController splashController = Get.find<SplashController>();
+
+      debugPrint('FavDebug: Starting load. Splash module: ${splashController.module?.id}, name: ${splashController.module?.moduleName}');
+
+      if (splashController.module == null) {
+        if (splashController.moduleList == null || splashController.moduleList!.isEmpty) {
+          debugPrint('FavDebug: moduleList empty, fetching modules...');
+          await splashController.getModules();
+        }
+        if (splashController.moduleList != null && splashController.moduleList!.isNotEmpty) {
+          debugPrint('FavDebug: Auto-setting module to ${splashController.moduleList!.first.id}');
+          splashController.setModule(splashController.moduleList!.first);
+        }
+      }
+
+      debugPrint('FavDebug: Fetching popular items and orders...');
+      try {
+        await Future.wait([
+          itemController.getPopularItemList(
+            offset: '1',
+            dataSource: DataSourceEnum.client,
+            notify: false,
+          ),
+          itemController.getRecommendedItemList(
+            true,
+            'all',
+            false,
+            dataSource: DataSourceEnum.client,
+          ),
+          storeController.getPopularStoreList(
+            true,
+            'all',
+            false,
+            dataSource: DataSourceEnum.client,
+          ),
+          if (AuthHelper.isLoggedIn()) ...[
+            orderController.getOrders(OrderListType.all, 1),
+            orderController.getLastOrders(isHome: false),
+          ],
+        ]);
+      } catch (innerErr, innerStack) {
+        debugPrint('FavDebug: Inner Future.wait error: $innerErr\n$innerStack');
+      }
+
+      debugPrint('FavDebug: Popular items count: ${itemController.popularItemList?.length}');
+      debugPrint('FavDebug: Recommended items count: ${itemController.recommendedItemList?.length}');
+      debugPrint('FavDebug: All orders count: ${orderController.allOrderModel?.orders?.length}');
+      debugPrint('FavDebug: Last orders count: ${orderController.lastOrders?.length}');
+
+      final Map<int, int> itemFrequency = {};
+      final Map<int, Item> historyItems = {};
+      final Map<int, int> categoryFrequency = {};
+      final Map<int, Store> historyStores = {};
+
+      if (AuthHelper.isLoggedIn()) {
+        final List<OrderModel> allOrdersList = [
+          ...?(orderController.allOrderModel?.orders),
+          ...?(orderController.historyOrderModel?.orders),
+          ...?(orderController.runningOrderModel?.orders),
+        ];
+
+        final Map<int, OrderModel> uniqueOrders = {};
+        for (final o in allOrdersList) {
+          if (o.id != null) uniqueOrders[o.id!] = o;
+        }
+        final List<OrderModel> orders = uniqueOrders.values.toList();
+        final List<LastOrderModel> lastOrders = orderController.lastOrders ?? orderController.lastOrdersHome ?? [];
+
+        for (final order in orders) {
+          if (order.store != null && order.store!.id != null) {
+            historyStores[order.store!.id!] = order.store!;
+          }
+        }
+        for (final lastOrder in lastOrders) {
+          if (lastOrder.store != null && lastOrder.store!.id != null && !historyStores.containsKey(lastOrder.store!.id)) {
+            historyStores[lastOrder.store!.id!] = Store(
+              id: lastOrder.store!.id,
+              name: lastOrder.store!.name,
+              slug: lastOrder.store!.slug,
+              logoFullUrl: lastOrder.store!.logoFullUrl,
+            );
+          }
+        }
+
+        final List<OrderModel> ordersToFetch = orders.take(6).toList();
+        final List<Future<List<OrderDetailsModel>?>> detailFutures = ordersToFetch.map((order) {
+          return orderServiceInterface.getOrderDetails(
+            order.id.toString(),
+            AuthHelper.isLoggedIn() ? null : AuthHelper.getGuestId(),
+          );
+        }).toList();
+
+        final List<List<OrderDetailsModel>?> detailsResults = await Future.wait(detailFutures);
+        for (int i = 0; i < detailsResults.length; i++) {
+          final List<OrderDetailsModel>? details = detailsResults[i];
+          final Store? orderStore = i < ordersToFetch.length ? ordersToFetch[i].store : null;
+          if (details != null) {
+            for (final od in details) {
+              final Item? item = od.itemDetails;
+              if (item != null && item.id != null) {
+                final int itemId = item.id!;
+                itemFrequency[itemId] = (itemFrequency[itemId] ?? 0) + (od.quantity ?? 1);
+
+                if (item.storeName == null || item.storeName!.isEmpty) {
+                  item.storeName = orderStore?.name;
+                }
+                item.storeId ??= orderStore?.id;
+                if (item.storeLogoFullUrl == null || item.storeLogoFullUrl!.isEmpty) {
+                  item.storeLogoFullUrl = orderStore?.logoFullUrl;
+                }
+                if ((item.imageFullUrl == null || item.imageFullUrl!.isEmpty) && od.imageFullUrl != null && od.imageFullUrl!.isNotEmpty) {
+                  item.imageFullUrl = od.imageFullUrl;
+                }
+
+                historyItems[itemId] = item;
+
+                if (item.categoryId != null) {
+                  categoryFrequency[item.categoryId!] = (categoryFrequency[item.categoryId!] ?? 0) + (od.quantity ?? 1);
+                }
+                if (item.categoryIds != null) {
+                  for (final cat in item.categoryIds!) {
+                    final int? cid = int.tryParse('${cat.id}');
+                    if (cid != null) {
+                      categoryFrequency[cid] = (categoryFrequency[cid] ?? 0) + (od.quantity ?? 1);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      final List<Item> sortedHistoryItems = historyItems.values.toList()
+        ..sort((a, b) => (itemFrequency[b.id] ?? 0).compareTo(itemFrequency[a.id] ?? 0));
+
+      final List<Item> popularSource = itemController.popularItemList ?? [];
+      final List<Item> recommendedSource = itemController.recommendedItemList ?? [];
+      final List<Item> reviewedSource = itemController.reviewedItemList ?? [];
+
+      final List<Item> categoryMatchedItems = [];
+      final List<Item> otherGeneralItems = [];
+
+      final Set<int> addedItemIds = sortedHistoryItems.map((e) => e.id!).toSet();
+
+      for (final item in [...popularSource, ...recommendedSource, ...reviewedSource]) {
+        if (item.id != null && !addedItemIds.contains(item.id)) {
+          addedItemIds.add(item.id!);
+
+          bool matchesPreference = false;
+          if (item.categoryId != null && categoryFrequency.containsKey(item.categoryId)) {
+            matchesPreference = true;
+          }
+          if (item.categoryIds != null) {
+            for (final cat in item.categoryIds!) {
+              final int? cid = int.tryParse('${cat.id}');
+              if (cid != null && categoryFrequency.containsKey(cid)) {
+                matchesPreference = true;
+                break;
+              }
+            }
+          }
+          if (item.storeId != null && historyStores.containsKey(item.storeId)) {
+            matchesPreference = true;
+          }
+
+          if (matchesPreference) {
+            categoryMatchedItems.add(item);
+          } else {
+            otherGeneralItems.add(item);
+          }
+        }
+      }
+
+      final List<Item> combinedRecommendations = [
+        ...sortedHistoryItems,
+        ...categoryMatchedItems,
+        ...otherGeneralItems,
+      ];
+
+      final List<Store> sortedHistoryStores = historyStores.values.toList();
+      final List<Store> popularStores = storeController.popularStoreList ?? [];
+      final Set<int> addedStoreIds = sortedHistoryStores.map((s) => s.id!).toSet();
+      final List<Store> combinedStores = [
+        ...sortedHistoryStores,
+        ...popularStores.where((s) => s.id != null && !addedStoreIds.contains(s.id)),
+      ];
+
+      if (mounted) {
+        setState(() {
+          _orderHistoryItems = sortedHistoryItems;
+          _recommendedItems = combinedRecommendations;
+          _itemOrderFrequency = itemFrequency;
+          _orderHistoryStores = sortedHistoryStores;
+          _recommendedStores = combinedStores;
+          _isRecommendationsLoading = false;
+        });
+      }
+    } catch (e, s) {
+      debugPrint('FavDebug: Outer error in _loadOrderHistoryAndRecommendations: $e\n$s');
+      if (mounted) {
+        setState(() => _isRecommendationsLoading = false);
+      }
     }
   }
 
@@ -85,15 +318,16 @@ class FavouriteScreenState extends State<FavouriteScreen> {
                 final int primaryCount = _isServiceModule ? services.length : items.length;
                 final int secondaryCount = _isServiceModule ? providers.length : stores.length;
 
-                // The selected tab's wish list is still null on first load — show a
-                // shimmer for the count instead of a misleading "0".
                 final bool primaryLoading = _isServiceModule ? controller.wishServiceList == null : controller.wishItemList == null;
                 final bool secondaryLoading = controller.wishStoreList == null;
                 final bool countLoading = _selectedFilter == _FavFilter.items ? primaryLoading : secondaryLoading;
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    await controller.getFavouriteList();
+                    await Future.wait([
+                      controller.getFavouriteList(),
+                      _loadOrderHistoryAndRecommendations(),
+                    ]);
                   },
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -134,70 +368,365 @@ class FavouriteScreenState extends State<FavouriteScreen> {
     );
   }
 
-  Widget _buildItemsBody({required BuildContext context, required FavouriteController controller, required List<Item> items}) {
+  Widget _buildItemsBody({
+    required BuildContext context,
+    required FavouriteController controller,
+    required List<Item> items,
+  }) {
     if (controller.wishItemList == null) {
       return const _LoadingPlaceholder();
     }
-    if (items.isEmpty) {
-      return _EmptyView(message: 'no_wish_data_found'.tr);
+
+    final bool hasFavourites = items.isNotEmpty;
+
+    List<Item> filteredRecommendations = [];
+    if (_activeRecommendationFilter == 'history') {
+      filteredRecommendations = _orderHistoryItems;
+    } else if (_activeRecommendationFilter == 'popular') {
+      filteredRecommendations = (Get.find<ItemController>().popularItemList ?? [])
+          .where((i) => i.id != null)
+          .toList();
+    } else if (_activeRecommendationFilter == 'top_rated') {
+      filteredRecommendations = _recommendedItems
+          .where((i) => (i.avgRating ?? 0) >= 4.5)
+          .toList();
+      if (filteredRecommendations.isEmpty) {
+        filteredRecommendations = _recommendedItems;
+      }
+    } else {
+      filteredRecommendations = _recommendedItems;
     }
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Dimensions.paddingSizeDefault,
-        vertical: Dimensions.paddingSizeDefault,
-      ),
-      child: Column(
-        children: items.map((Item item) {
-          final bool isLast = identical(item, items.last);
-          final int index = items.indexOf(item);
-          return Container(
-            margin: EdgeInsets.only(bottom: isLast ? 0 : Dimensions.paddingSizeDefault),
-            padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
-            decoration: BoxDecoration(
-              border: isLast ? null : Border(
-                bottom: BorderSide(color: Theme.of(context).disabledColor.withValues(alpha: 0.18)),
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasFavourites) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Dimensions.paddingSizeDefault,
+              vertical: Dimensions.paddingSizeDefault,
+            ),
+            child: Column(
+              children: items.map((Item item) {
+                final bool isLast = identical(item, items.last);
+                final int index = items.indexOf(item);
+                return Container(
+                  margin: EdgeInsets.only(bottom: isLast ? 0 : Dimensions.paddingSizeDefault),
+                  padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
+                  decoration: BoxDecoration(
+                    border: isLast ? null : Border(
+                      bottom: BorderSide(color: Theme.of(context).disabledColor.withValues(alpha: 0.18)),
+                    ),
+                  ),
+                  child: ExclusiveDealCard(
+                    item: item,
+                    width: double.infinity,
+                    index: index,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ] else ...[
+          const _FavEmptyHeroWidget(
+            icon: Icons.favorite_border_rounded,
+            title: 'Your Wishlist is Empty',
+            subtitle: 'We curated items based on your order history and favorite categories. Tap the heart icon to save them or add them straight to your cart!',
+          ),
+        ],
+
+        // Recommended items section
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: Dimensions.paddingSizeSmall),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _orderHistoryItems.isNotEmpty
+                              ? 'Curated Based on Your Orders'
+                              : 'Recommended For You',
+                          style: robotoBold.copyWith(
+                            fontSize: Dimensions.fontSizeLarge,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        Text(
+                          _orderHistoryItems.isNotEmpty
+                              ? 'Items and categories you order most frequently'
+                              : 'Top picks and trending items you may love',
+                          style: robotoRegular.copyWith(
+                            fontSize: Dimensions.fontSizeExtraSmall,
+                            color: Theme.of(context).disabledColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: Dimensions.paddingSizeDefault),
+
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    _buildRecommendationFilterChip(
+                      id: 'all',
+                      label: 'All Picks',
+                      icon: Icons.auto_awesome_rounded,
+                    ),
+                    if (_orderHistoryItems.isNotEmpty)
+                      _buildRecommendationFilterChip(
+                        id: 'history',
+                        label: 'Order Again (${_orderHistoryItems.length})',
+                        icon: Icons.history_rounded,
+                      ),
+                    _buildRecommendationFilterChip(
+                      id: 'popular',
+                      label: 'Popular Picks',
+                      icon: Icons.local_fire_department_rounded,
+                    ),
+                    _buildRecommendationFilterChip(
+                      id: 'top_rated',
+                      label: 'Top Rated',
+                      icon: Icons.star_rounded,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Dimensions.paddingSizeDefault),
+
+              if (_isRecommendationsLoading && filteredRecommendations.isEmpty)
+                const _LoadingPlaceholder()
+              else if (filteredRecommendations.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
+                  child: Center(
+                    child: Text(
+                      'No recommendations found.',
+                      style: robotoRegular.copyWith(color: Theme.of(context).disabledColor),
+                    ),
+                  ),
+                )
+              else
+                Column(
+                  children: List.generate(filteredRecommendations.length, (index) {
+                    final Item item = filteredRecommendations[index];
+                    return FavRecommendationCard(
+                      item: item,
+                      index: index,
+                      orderCount: _itemOrderFrequency[item.id] ?? 0,
+                      isFromOrderHistory: _itemOrderFrequency.containsKey(item.id),
+                    );
+                  }),
+                ),
+
+              const SizedBox(height: Dimensions.paddingSizeExtraLarge),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendationFilterChip({
+    required String id,
+    required String label,
+    required IconData icon,
+  }) {
+    final bool isSelected = _activeRecommendationFilter == id;
+    final Color primary = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          if (_activeRecommendationFilter != id) {
+            setState(() => _activeRecommendationFilter = id);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? primary : Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(
+              color: isSelected ? primary : Theme.of(context).disabledColor.withValues(alpha: 0.2),
             ),
-            child: ExclusiveDealCard(
-              item: item,
-              width: double.infinity,
-              index: index,
-            ),
-          );
-        }).toList(),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: primary.withValues(alpha: 0.25),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : Theme.of(context).disabledColor,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: robotoMedium.copyWith(
+                  fontSize: Dimensions.fontSizeSmall,
+                  color: isSelected
+                      ? Colors.white
+                      : Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildRestaurantsBody({required BuildContext context, required FavouriteController controller, required List<Store> stores}) {
+  Widget _buildRestaurantsBody({
+    required BuildContext context,
+    required FavouriteController controller,
+    required List<Store> stores,
+  }) {
     if (controller.wishStoreList == null) {
       return const _LoadingPlaceholder(isStore: true);
     }
-    if (stores.isEmpty) {
-      return _EmptyView(message: 'no_wish_data_found'.tr);
-    }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Dimensions.paddingSizeDefault,
-        vertical: Dimensions.paddingSizeDefault,
-      ),
-      child: Column(
-        children: stores.map((Store store) {
-          final bool isLast = identical(store, stores.last);
-          return Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : Dimensions.paddingSizeDefault),
-            child: FeaturedStoreCard(
-              data: store,
-              width: double.infinity,
-              isQuick: false,
-              onTap: () => Get.toNamed(RouteHelper.getStoreRoute(
-                id: store.id, page: 'item', slug: store.slug ?? '',
-              )),
+    final bool hasFavouriteStores = stores.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasFavouriteStores) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Dimensions.paddingSizeDefault,
+              vertical: Dimensions.paddingSizeDefault,
             ),
-          );
-        }).toList(),
-      ),
+            child: Column(
+              children: stores.map((Store store) {
+                final bool isLast = identical(store, stores.last);
+                return Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : Dimensions.paddingSizeDefault),
+                  child: FeaturedStoreCard(
+                    data: store,
+                    width: double.infinity,
+                    isQuick: false,
+                    onTap: () => Get.toNamed(RouteHelper.getStoreRoute(
+                      id: store.id, page: 'item', slug: store.slug ?? '',
+                    )),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ] else ...[
+          const _FavEmptyHeroWidget(
+            icon: Icons.storefront_rounded,
+            title: 'No Favourite Stores Yet',
+            subtitle: 'Discover stores you have ordered from in the past or popular stores nearby. Tap the heart icon to add them to your favourites!',
+          ),
+        ],
+
+        if (_orderHistoryStores.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
+            child: Row(
+              children: [
+                const Icon(Icons.history_rounded, size: 18, color: Color(0xFF10B981)),
+                const SizedBox(width: 6),
+                Text(
+                  'Stores You Ordered From',
+                  style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeSmall),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
+            child: Column(
+              children: _orderHistoryStores.map((Store store) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
+                  child: FeaturedStoreCard(
+                    data: store,
+                    width: double.infinity,
+                    isQuick: false,
+                    onTap: () => Get.toNamed(RouteHelper.getStoreRoute(
+                      id: store.id, page: 'item', slug: store.slug ?? '',
+                    )),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeDefault),
+        ],
+
+        if (_recommendedStores.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
+            child: Row(
+              children: [
+                Icon(Icons.local_fire_department_rounded, size: 18, color: Theme.of(context).primaryColor),
+                const SizedBox(width: 6),
+                Text(
+                  'Popular Stores Near You',
+                  style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeSmall),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
+            child: Column(
+              children: _recommendedStores.map((Store store) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
+                  child: FeaturedStoreCard(
+                    data: store,
+                    width: double.infinity,
+                    isQuick: false,
+                    onTap: () => Get.toNamed(RouteHelper.getStoreRoute(
+                      id: store.id, page: 'item', slug: store.slug ?? '',
+                    )),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeExtraLarge),
+        ],
+      ],
     );
   }
 
@@ -502,6 +1031,77 @@ class _StoreShimmerBlock extends StatelessWidget {
   }
 }
 
+class _FavEmptyHeroWidget extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _FavEmptyHeroWidget({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Dimensions.paddingSizeLarge,
+        vertical: Dimensions.paddingSizeExtraLarge,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(Dimensions.radiusLarge),
+        border: Border.all(
+          color: Theme.of(context).disabledColor.withValues(alpha: 0.12),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 28, color: Theme.of(context).primaryColor),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeSmall),
+          Text(
+            title,
+            style: robotoBold.copyWith(
+              fontSize: Dimensions.fontSizeLarge,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+            ),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: robotoRegular.copyWith(
+              fontSize: Dimensions.fontSizeSmall,
+              color: Theme.of(context).disabledColor,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyView extends StatelessWidget {
   final String message;
   const _EmptyView({required this.message});
@@ -529,3 +1129,4 @@ class _EmptyView extends StatelessWidget {
     );
   }
 }
+

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:sixam_mart/common/controllers/theme_controller.dart';
 import 'package:sixam_mart/common/widgets/back_to_top.dart';
+import 'package:sixam_mart/features/cart/controllers/cart_controller.dart';
 import 'package:sixam_mart/features/home/screens/home_screen.dart';
 import 'package:sixam_mart/features/smart_banner/controllers/smart_banner_controller.dart';
 import 'package:sixam_mart/features/home/widgets/refer_bottom_sheet_widget.dart';
@@ -30,6 +31,7 @@ import 'package:sixam_mart/features/splash/controllers/splash_controller.dart';
 import 'package:sixam_mart/helper/address_helper.dart';
 import 'package:sixam_mart/helper/auth_helper.dart';
 import 'package:sixam_mart/helper/responsive_helper.dart';
+import 'package:sixam_mart/theme/buggy_cxp_theme_extension.dart';
 import 'package:sixam_mart/util/app_constants.dart';
 import 'package:sixam_mart/util/dimensions.dart';
 
@@ -378,10 +380,9 @@ class _MainScreenState extends State<MainScreen> with AutomaticKeepAliveClientMi
       // Status bar tint: matches the TopHeaderWidget (disabled tint) at the top, and
       // the pinned search bar (card color) once the search layer sticks.
       final bool isDark = Get.find<ThemeController>().darkTheme;
+      final cxp = context.cxpTheme;
       final Color topStatusBarColor = (selectedModuleType == AppConstants.grocery || isHomeModule)
-          ? (Get.isRegistered<GroceryFlavourFestController>()
-              ? Get.find<GroceryFlavourFestController>().headerTopColor
-              : const Color(0xFF2E0016))
+          ? cxp.gradientFrom
           : Color.alphaBlend(
               Theme.of(context).disabledColor.withAlpha(30),
               Theme.of(context).cardColor,
@@ -398,7 +399,8 @@ class _MainScreenState extends State<MainScreen> with AutomaticKeepAliveClientMi
         });
       }
 
-      final bool useLightIcons = (selectedModuleType == AppConstants.grocery || isHomeModule) && !_isSearchPinned && !_isTopHeaderScrolledOut;
+      final bool isDarkHeader = topStatusBarColor.computeLuminance() < 0.55;
+      final bool useLightIcons = (selectedModuleType == AppConstants.grocery || isHomeModule) && !_isSearchPinned && !_isTopHeaderScrolledOut && isDarkHeader;
 
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle(
@@ -497,7 +499,14 @@ class _MainScreenState extends State<MainScreen> with AutomaticKeepAliveClientMi
                 ),
 
               if(selectedModuleType == AppConstants.grocery || isHomeModule)
-                const GroceryFloatingDeliveryBarWidget(),
+                GetBuilder<CartController>(
+                  builder: (cartController) {
+                    if (cartController.cartList.isNotEmpty) {
+                      return const GroceryFloatingDeliveryBarWidget();
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
 
               ValueListenableBuilder<double>(
                 valueListenable: _backToTopTop,

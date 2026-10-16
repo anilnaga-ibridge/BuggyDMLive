@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +22,7 @@ class CxpExperienceController extends GetxController with WidgetsBindingObserver
   final RxString _lastError = ''.obs;
 
   DateTime? _lastForegroundRefresh;
+  Timer? _pollTimer;
 
   CxpExperienceModel get experience => _experience.value;
   CxpThemeModel get theme => _theme.value;
@@ -37,10 +39,16 @@ class CxpExperienceController extends GetxController with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     _loadCachedExperience('grocery');
     fetchExperience(page: 'home', module: 'grocery');
+
+    // Periodically poll for CXP experience & theme token updates so changes in Admin reflect live
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      fetchExperience(page: 'home', module: 'grocery');
+    });
   }
 
   @override
   void onClose() {
+    _pollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.onClose();
   }

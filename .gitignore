@@ -33,3 +33,7 @@ BuggyDM/.env.*
 !BuggyDM/.env.example
 BuggyDM/*.tsbuildinfo
 BuggyDM/dump.rdb
+
+# Archives and storage backups
+storage.zip
+**/storage.zip

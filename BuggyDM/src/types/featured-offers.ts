@@ -32,9 +32,11 @@ export interface TodaysOffersConfig {
 
 export interface CouponCard {
   id: string;
+  title?: string;
   discountText: string;
   offText: string;
   codeText: string;
+  image?: string;
   bgColor: string;
   borderColor: string;
   link?: string;
@@ -157,35 +159,63 @@ export const DEFAULT_FEATURED_OFFERS_CONFIG: HomeFeaturedOffersConfig = {
     title: "Coupons & Offers",
     coupons: [
       {
-        id: "coupon_1",
-        discountText: "FLAT\n₹50",
+        id: "coupon_grocery",
+        title: "Grocery Essentials",
+        discountText: "UP TO 50%",
         offText: "OFF",
-        codeText: "USE CODE: BUGGY50",
-        bgColor: "#D1FAE5",
-        borderColor: "#A7F3D0",
+        codeText: "GROCERY50",
+        image: "assets/image/coupon_grocery_50.png",
+        bgColor: "#F0FDF4",
+        borderColor: "#BBF7D0",
       },
       {
-        id: "coupon_2",
-        discountText: "FLAT\n₹100",
+        id: "coupon_food",
+        title: "Food Delights",
+        discountText: "FLAT ₹120",
         offText: "OFF",
-        codeText: "USE CODE: BUGGY100",
-        bgColor: "#CCFBF1",
-        borderColor: "#99F6E4",
+        codeText: "FOOD120",
+        image: "assets/image/coupon_food_120.png",
+        bgColor: "#FFF7ED",
+        borderColor: "#FED7AA",
       },
       {
-        id: "coupon_3",
-        discountText: "FLAT\n₹150",
+        id: "coupon_care",
+        title: "Personal Care Specials",
+        discountText: "UP TO 40%",
         offText: "OFF",
-        codeText: "USE CODE: BUGGY150",
-        bgColor: "#E0F2FE",
-        borderColor: "#BAE6FD",
+        codeText: "CARE40",
+        image: "assets/image/coupon_care_40.png",
+        bgColor: "#FDF2F8",
+        borderColor: "#FBCFE8",
       },
       {
-        id: "coupon_4",
-        discountText: "UPTO\n₹75",
-        offText: "CASHBACK",
-        codeText: "ON UPI PAYMENTS",
-        bgColor: "#FEF3C7",
+        id: "coupon_tech",
+        title: "Electronics Deals",
+        discountText: "FLAT ₹300",
+        offText: "OFF",
+        codeText: "TECH300",
+        image: "assets/image/coupon_tech_300.png",
+        bgColor: "#EFF6FF",
+        borderColor: "#BFDBFE",
+      },
+      {
+        id: "coupon_pet",
+        title: "Pet Care Offers",
+        discountText: "UP TO 30%",
+        offText: "OFF",
+        codeText: "PET30",
+        image: "assets/image/coupon_pet_30.png",
+        bgColor: "#F5F3FF",
+        borderColor: "#DDD6FE",
+      },
+      {
+        id: "coupon_home",
+        title: "Home & Living Specials",
+        discountText: "FLAT ₹200",
+        offText: "OFF",
+        codeText: "HOME200",
+        image: "assets/image/coupon_home_200.png",
+        bgColor: "#FFFBEB",
         borderColor: "#FDE68A",
       },
     ],

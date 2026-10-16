@@ -31,7 +31,7 @@ class Screen1PaymentSuccess extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String displayId = orderId ?? (order?.id != null ? order!.id.toString() : '728912');
+    final String displayId = orderId ?? (order?.id != null ? order!.id.toString() : '100003');
     final double amount = order?.orderAmount ?? 889.0;
 
     final splash = Get.find<SplashController>();

@@ -18,6 +18,12 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cxp = context.cxpTheme;
+    final Color headerBg = cxp.gradientFrom;
+    final bool isDarkHeader = headerBg.computeLuminance() < 0.55;
+    final Color titleColor = isDarkHeader ? Colors.white : cxp.textPrimary;
+    final Color subtitleColor = isDarkHeader ? Colors.white.withValues(alpha: 0.85) : cxp.textSecondary;
+    final Color iconColor = isDarkHeader ? Colors.white : cxp.textPrimary;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         cxp.spacingMd,
@@ -51,9 +57,9 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.bolt_rounded,
-                            color: Color(0xFFFFB800),
+                            color: cxp.accent != Colors.transparent ? cxp.accent : const Color(0xFFFFB800),
                             size: 20,
                           ),
                           const SizedBox(width: 2),
@@ -62,7 +68,7 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                               cityTitle,
                               style: robotoBold.copyWith(
                                 fontSize: 17,
-                                color: Colors.white,
+                                color: titleColor,
                                 letterSpacing: -0.3,
                               ),
                               maxLines: 1,
@@ -70,10 +76,10 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 3),
-                          const Icon(
+                          Icon(
                             Icons.keyboard_arrow_right_rounded,
                             size: 20,
-                            color: Colors.white,
+                            color: titleColor,
                           ),
                         ],
                       ),
@@ -88,7 +94,7 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                               addressText,
                               style: robotoRegular.copyWith(
                                 fontSize: 12,
-                                color: Colors.white.withValues(alpha: 0.82),
+                                color: subtitleColor,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -98,7 +104,7 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                           Icon(
                             Icons.keyboard_arrow_down_rounded,
                             size: 16,
-                            color: Colors.white.withValues(alpha: 0.82),
+                            color: subtitleColor,
                           ),
                         ],
                       ),
@@ -115,7 +121,7 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Wallet Chip (Vibrant purple pill)
+              // Wallet Chip
               GetBuilder<ProfileController>(
                 builder: (profileController) {
                   final double walletBalance = profileController.userInfoModel?.walletBalance ?? 0.0;
@@ -131,12 +137,12 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF380B42),
+                        color: isDarkHeader ? cxp.surface.withValues(alpha: 0.28) : cxp.surface,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF8B5CF6), width: 1.2),
+                        border: Border.all(color: cxp.accent.withValues(alpha: 0.7), width: 1.2),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.25),
+                            color: cxp.accent.withValues(alpha: 0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -147,14 +153,14 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF581C87),
+                            decoration: BoxDecoration(
+                              color: cxp.accent.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.account_balance_wallet_rounded,
                               size: 12,
-                              color: Color(0xFFC084FC),
+                              color: cxp.accent,
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -162,7 +168,7 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                             PriceConverter.convertPrice(walletBalance),
                             style: robotoBold.copyWith(
                               fontSize: 13,
-                              color: Colors.white,
+                              color: titleColor,
                             ),
                           ),
                         ],
@@ -182,19 +188,19 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF20000C),
+                    color: isDarkHeader ? cxp.surface.withValues(alpha: 0.28) : cxp.surface,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                    border: Border.all(color: isDarkHeader ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: CartWidget(size: 18, color: Colors.white),
+                  child: Center(
+                    child: CartWidget(size: 18, color: iconColor),
                   ),
                 ),
               ),
@@ -209,21 +215,21 @@ class GroceryQuickHeaderWidget extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF20000C),
+                    color: isDarkHeader ? cxp.surface.withValues(alpha: 0.28) : cxp.surface,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                    border: Border.all(color: isDarkHeader ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.person_rounded,
                     size: 20,
-                    color: Colors.white,
+                    color: iconColor,
                   ),
                 ),
               ),

@@ -38,6 +38,25 @@ class CustomImage extends StatelessWidget {
         ? '${AppConstants.baseUrl}/image-proxy?url=${Uri.encodeComponent(image)}'
         : image;
 
+    if (kIsWeb) {
+      return AnimatedScale(
+        scale: isHovered ? 1.1 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        child: Image.network(
+          finalUrl,
+          height: height,
+          width: width,
+          fit: fit,
+          color: color,
+          errorBuilder: (context, error, stackTrace) => Image.asset(
+            placeholder.isNotEmpty ? placeholder : (isNotification ? Images.notificationPlaceholder : Images.placeholder),
+            height: height, width: width, fit: fit, color: color,
+          ),
+        ),
+      );
+    }
+
     return AnimatedScale(
       scale: isHovered ? 1.1 : 1.0,
       duration: const Duration(milliseconds: 300),

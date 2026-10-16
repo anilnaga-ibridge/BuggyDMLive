@@ -64,7 +64,7 @@ class _GrocerySearchBarWidgetState extends State<GrocerySearchBarWidget> {
           ? Get.find<GroceryFlavourFestController>()
           : Get.put(GroceryFlavourFestController()),
       builder: (festController) {
-        final Color bgColor = festController.headerTopColor;
+        final Color bgColor = cxp.gradientTo;
 
         return Container(
           color: bgColor,

@@ -1916,9 +1916,12 @@ function FeaturedOffersWidget({ theme }: WidgetRenderProps) {
       enabled: true,
       title: "Coupons & Offers",
       coupons: [
-        { discountText: "Flat 50% OFF", codeText: "Use QUICK50", bgColor: "#D1FAE5", borderColor: "#A7F3D0" },
-        { discountText: "Flat 30% OFF", codeText: "Use FIRST30", bgColor: "#FEF3C7", borderColor: "#FDE68A" },
-        { discountText: "Up to 20% OFF", codeText: "Use FREESHIP", bgColor: "#FCE7F3", borderColor: "#FBCFE8" },
+        { id: "coupon_grocery", title: "Grocery Essentials", discountText: "UP TO 50%", codeText: "GROCERY50", image: resolveImgUrl("assets/image/coupon_grocery_50.png"), bgColor: "#F0FDF4", borderColor: "#BBF7D0" },
+        { id: "coupon_food", title: "Food Delights", discountText: "FLAT ₹120", codeText: "FOOD120", image: resolveImgUrl("assets/image/coupon_food_120.png"), bgColor: "#FFF7ED", borderColor: "#FED7AA" },
+        { id: "coupon_care", title: "Personal Care Specials", discountText: "UP TO 40%", codeText: "CARE40", image: resolveImgUrl("assets/image/coupon_care_40.png"), bgColor: "#FDF2F8", borderColor: "#FBCFE8" },
+        { id: "coupon_tech", title: "Electronics Deals", discountText: "FLAT ₹300", codeText: "TECH300", image: resolveImgUrl("assets/image/coupon_tech_300.png"), bgColor: "#EFF6FF", borderColor: "#BFDBFE" },
+        { id: "coupon_pet", title: "Pet Care Offers", discountText: "UP TO 30%", codeText: "PET30", image: resolveImgUrl("assets/image/coupon_pet_30.png"), bgColor: "#F5F3FF", borderColor: "#DDD6FE" },
+        { id: "coupon_home", title: "Home & Living Specials", discountText: "FLAT ₹200", codeText: "HOME200", image: resolveImgUrl("assets/image/coupon_home_200.png"), bgColor: "#FFFBEB", borderColor: "#FDE68A" },
       ],
     },
   });
@@ -2091,33 +2094,32 @@ function FeaturedOffersWidget({ theme }: WidgetRenderProps) {
             {cfg.coupons?.title || "Coupons & Offers"}
           </h4>
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {coupons.map((coupon: any, idx: number) => (
-              <div
-                key={coupon.id || idx}
-                style={{
-                  backgroundColor: theme.isDark ? theme.surfaceElevated : (coupon.bgColor || "#D1FAE5"),
-                  borderColor: theme.isDark ? "#3f3f46" : (coupon.borderColor || "#A7F3D0"),
-                  borderRadius: `${theme.radiusMd}px`,
-                  boxShadow: recipeElevation(theme, "subtle"),
-                }}
-                className="shrink-0 w-32 p-2 border flex items-center gap-1.5 transition-all"
-              >
+            {coupons.map((coupon: any, idx: number) => {
+              const defaultImgs = [
+                "assets/image/coupon_grocery_50.png",
+                "assets/image/coupon_food_120.png",
+                "assets/image/coupon_care_40.png",
+                "assets/image/coupon_tech_300.png",
+                "assets/image/coupon_pet_30.png",
+                "assets/image/coupon_home_200.png",
+              ];
+              const imgUrl = coupon.image ? resolveImgUrl(coupon.image) : resolveImgUrl(defaultImgs[idx % defaultImgs.length]);
+              return (
                 <div
-                  className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[9px] font-bold shrink-0"
-                  style={{ backgroundColor: theme.primary }}
+                  key={coupon.id || idx}
+                  className="shrink-0 w-36 h-32 rounded-xl overflow-hidden border border-slate-200/80 shadow-xs relative transition hover:scale-[1.02] bg-white"
                 >
-                  %
+                  <img
+                    src={imgUrl}
+                    alt={coupon.title || coupon.codeText || `Coupon ${idx + 1}`}
+                    className="w-full h-full object-fill"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = "none";
+                    }}
+                  />
                 </div>
-                <div className="min-w-0">
-                  <div className="font-black leading-tight truncate" style={{ ...recipeTypography(theme, "caption"), color: theme.textPrimary }}>
-                    {coupon.discountText}
-                  </div>
-                  <div className="font-medium truncate" style={{ ...recipeTypography(theme, "caption"), color: theme.textSecondary, fontSize: "7.5px" }}>
-                    {coupon.codeText}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

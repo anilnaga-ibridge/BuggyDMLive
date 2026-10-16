@@ -12683,4 +12683,7 @@ Smartly or Earn. ',
   'Be prepare to receive when they complete there first purchase' => 'Be prepare to receive when they complete there first purchase',
   'Default unit is required' => 'Default unit is required',
   'unit_added_successfully' => 'Unit added successfully',
+  'Quick Grocery' => 'Quick Grocery',
+  'Quick food' => 'Quick food',
+  'Quick Ecom' => 'Quick Ecom',
 );

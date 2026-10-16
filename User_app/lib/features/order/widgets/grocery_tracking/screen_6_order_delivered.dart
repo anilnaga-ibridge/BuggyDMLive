@@ -29,7 +29,7 @@ class Screen6OrderDelivered extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String displayId = orderId ?? (order?.id != null ? order!.id.toString() : '728912');
+    final String displayId = orderId ?? (order?.id != null ? order!.id.toString() : '100003');
 
     DateTime deliveryDate = DateTime.now();
     if (order?.createdAt != null) {

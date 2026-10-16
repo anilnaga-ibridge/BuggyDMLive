@@ -31,7 +31,7 @@ class Screen7PostDeliveryDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String displayId = order?.id != null ? order!.id.toString() : '728912';
+    final String displayId = order?.id != null ? order!.id.toString() : '100003';
 
     DateTime confirmedDate = DateTime.now().subtract(const Duration(minutes: 30));
     DateTime preparingDate = confirmedDate.add(const Duration(minutes: 4));

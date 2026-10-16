@@ -16,8 +16,8 @@ import 'package:sixam_mart/util/dimensions.dart';
 import 'package:sixam_mart/util/images.dart';
 import 'package:sixam_mart/util/styles.dart';
 
-import 'package:sixam_mart/features/dashboard/modules/grocery/widgets/grocery_flavour_fest_widget.dart';
 import 'package:sixam_mart/features/dashboard/modules/grocery/widgets/grocery_quick_header_widget.dart';
+import 'package:sixam_mart/features/cxp/controllers/cxp_experience_controller.dart';
 import 'package:sixam_mart/features/cxp/widgets/cxp_decoration_widget.dart';
 import 'package:sixam_mart/features/cxp/widgets/cxp_paint_drip_widget.dart';
 import 'package:sixam_mart/theme/buggy_cxp_theme_extension.dart';
@@ -42,31 +42,35 @@ class TopHeaderWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final String? moduleType = Get.find<SplashController>().module?.moduleType?.toString();
     final bool isGrocery = moduleType == AppConstants.grocery && !isParcelModule && title == null;
-    final cxp = context.cxpTheme;
-    final headerDecs = cxp.getHeaderDecorations();
-    final hasPaintDrip = headerDecs.any((d) => d.type == 'paint_drip');
 
-    if (isGrocery) {
-      final GroceryFlavourFestController festController = Get.isRegistered<GroceryFlavourFestController>()
-          ? Get.find<GroceryFlavourFestController>()
-          : Get.put(GroceryFlavourFestController());
+    return GetBuilder<CxpExperienceController>(
+      builder: (cxpController) {
+        final cxp = context.cxpTheme;
+        final headerDecs = cxp.getHeaderDecorations();
+        final hasPaintDrip = headerDecs.any((d) => d.type == 'paint_drip');
 
-      return GetBuilder<GroceryFlavourFestController>(
-        init: festController,
-        builder: (controller) {
-          final Color themeColor = controller.headerTopColor;
+        // Dynamic header background based on CXP theme:
+        final Color headerStart = cxp.gradientFrom;
+        final Color headerEnd = cxp.gradientTo;
+        final bool hasGradient = headerStart != headerEnd;
+
+        final BoxDecoration headerDecoration = BoxDecoration(
+          color: headerStart,
+          gradient: hasGradient
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [headerStart, headerEnd],
+                )
+              : null,
+        );
+
+        if (isGrocery) {
           return Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                decoration: BoxDecoration(
-                  color: themeColor,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [themeColor, themeColor],
-                  ),
-                ),
+                decoration: headerDecoration,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -99,19 +103,19 @@ class TopHeaderWidget extends StatelessWidget {
                 ),
             ],
           );
-        },
-      );
-    }
+        }
 
-    return Container(
-      color: Theme.of(context).disabledColor.withAlpha(30),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DashboardAppBar(isHomeModule: isHomeModule, isParcelModule: isParcelModule, title: title, onBackTap: onBackTap),
-          if(showModuleTabs) const ModuleTabs(),
-        ],
-      ),
+        return Container(
+          decoration: headerDecoration,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DashboardAppBar(isHomeModule: isHomeModule, isParcelModule: isParcelModule, title: title, onBackTap: onBackTap),
+              if(showModuleTabs) const ModuleTabs(),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -350,6 +354,31 @@ class _ModuleTabsState extends State<ModuleTabs> {
 
   @override
   Widget build(BuildContext context) {
+    final cxp = context.cxpTheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // CXP theme colors for active/inactive tabs
+    final Color activeBg = cxp.primary;
+    final Color activeBorder = cxp.accent != cxp.primary ? cxp.accent : cxp.primary;
+    final bool isActiveDark = activeBg.computeLuminance() < 0.55;
+    final Color activeText = isActiveDark ? Colors.white : const Color(0xFF0F172A);
+
+    // Determine unselected styling from header luminance
+    final Color headerBg = cxp.gradientFrom;
+    final bool isHeaderDark = headerBg.computeLuminance() < 0.55;
+
+    final Color inactiveBg = isHeaderDark
+        ? cxp.surface.withValues(alpha: 0.24)
+        : (cxp.surface != Colors.transparent ? cxp.surface : Colors.white);
+    final Color inactiveBorder = isHeaderDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : (isDark ? const Color(0xFF3F3F46) : const Color(0xFFE2E8F0));
+    final Color inactiveText = isHeaderDark
+        ? Colors.white.withValues(alpha: 0.88)
+        : cxp.textSecondary;
+
+    final double chipRadius = cxp.buttonRadius > 0 ? cxp.buttonRadius : 22;
+
     return GetBuilder<SplashController>(builder: (splashController) {
       if(splashController.moduleList == null) {
         return const _ModuleTabsShimmer();
@@ -359,9 +388,14 @@ class _ModuleTabsState extends State<ModuleTabs> {
       if (tabs.isEmpty) {
         return const SizedBox();
       }
-      final int selectedIndex = (splashController.selectedModuleIndex >= 0 && splashController.selectedModuleIndex < tabs.length)
-          ? splashController.selectedModuleIndex
-          : 0;
+
+      int selectedIndex = 0;
+      if (splashController.module == null) {
+        selectedIndex = 0; // Home is index 0
+      } else {
+        final matchIdx = tabs.indexWhere((t) => t.moduleType == splashController.module?.moduleType);
+        selectedIndex = matchIdx != -1 ? matchIdx : 0;
+      }
 
       _scrollToIndex(selectedIndex);
 
@@ -382,35 +416,29 @@ class _ModuleTabsState extends State<ModuleTabs> {
                 itemBuilder: (context, index) {
                   final tab = tabs[index];
                   final bool isSelected = index == selectedIndex;
-                  const Color wineActive = Color(0xFF6B0033);
-                  const Color wineBorder = Color(0xFFFF2E63);
 
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () => tab.onTap?.call(),
-                      borderRadius: BorderRadius.circular(22),
-                      splashColor: wineBorder.withValues(alpha: 0.2),
-                      highlightColor: wineBorder.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(chipRadius),
+                      splashColor: activeBorder.withValues(alpha: 0.2),
+                      highlightColor: activeBorder.withValues(alpha: 0.1),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         curve: Curves.easeInOut,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? wineActive
-                              : const Color(0xFF45001E).withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(22),
+                          color: isSelected ? activeBg : inactiveBg,
+                          borderRadius: BorderRadius.circular(chipRadius),
                           border: Border.all(
-                            color: isSelected
-                                ? wineBorder
-                                : Colors.white.withValues(alpha: 0.14),
-                            width: isSelected ? 1.4 : 1.0,
+                            color: isSelected ? activeBorder : inactiveBorder,
+                            width: isSelected ? 1.5 : 1.0,
                           ),
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: wineBorder.withValues(alpha: 0.28),
+                                    color: activeBg.withValues(alpha: 0.32),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -421,30 +449,34 @@ class _ModuleTabsState extends State<ModuleTabs> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(3.5),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? wineBorder.withValues(alpha: 0.25)
-                                    : Colors.white.withValues(alpha: 0.08),
-                                shape: BoxShape.circle,
+                            if (tab.emoji.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 5),
+                                child: Text(tab.emoji, style: const TextStyle(fontSize: 14)),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.only(right: 5),
+                                child: Container(
+                                  padding: const EdgeInsets.all(3.5),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? activeBorder.withValues(alpha: 0.25)
+                                        : (isHeaderDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    tab.icon,
+                                    size: 13,
+                                    color: isSelected ? activeText : inactiveText,
+                                  ),
+                                ),
                               ),
-                              child: Icon(
-                                tab.icon,
-                                size: 14,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.8),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
                             Text(
                               tab.label,
                               style: (isSelected ? robotoBold : robotoMedium).copyWith(
                                 fontSize: 13,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.85),
+                                color: isSelected ? activeText : inactiveText,
                                 letterSpacing: -0.1,
                               ),
                             ),
@@ -465,18 +497,38 @@ class _ModuleTabsState extends State<ModuleTabs> {
   List<_FoodModuleModuleTabData> _buildTabs(SplashController splashController) {
     final List<_FoodModuleModuleTabData> tabs = [];
 
+    // Home Tab
+    final bool isHomeSelected = splashController.module == null;
+    tabs.add(
+      _FoodModuleModuleTabData(
+        label: 'Home',
+        isSelected: isHomeSelected,
+        onTap: () {
+          if (splashController.module != null) {
+            splashController.removeModule();
+          }
+        },
+        icon: Icons.home_rounded,
+        emoji: '',
+        color: const Color(0xFF3B82F6),
+        moduleType: 'home',
+      ),
+    );
+
     if(splashController.moduleList != null && splashController.moduleList!.isNotEmpty) {
       for(int index = 0; index < splashController.moduleList!.length; index++) {
         final module = splashController.moduleList![index];
         final String moduleType = module.moduleType?.toString() ?? '';
         final int currentTabIndex = index;
+        final bool isSelected = !isHomeSelected && (splashController.module?.id == module.id || splashController.selectedModuleIndex == currentTabIndex);
 
         tabs.add(
           _FoodModuleModuleTabData(
             label: ModuleHelper.moduleDisplayName(moduleType, moduleName: module.moduleName),
-            isSelected: splashController.selectedModuleIndex == currentTabIndex,
+            isSelected: isSelected,
             onTap: () => splashController.selectModuleByTabIndex(currentTabIndex),
             icon: _getModuleIcon(moduleType),
+            emoji: _getModuleEmoji(moduleType),
             color: _getModuleColor(moduleType),
             moduleType: moduleType,
           ),
@@ -484,44 +536,60 @@ class _ModuleTabsState extends State<ModuleTabs> {
       }
     }
 
-    if(tabs.isEmpty) {
+    if(tabs.length == 1) {
       tabs.addAll([
         _FoodModuleModuleTabData(
-          label: 'Grocery',
-          isSelected: splashController.selectedModuleIndex == 0,
+          label: 'Quick Grocery',
+          isSelected: splashController.selectedModuleIndex == 0 && !isHomeSelected,
           onTap: () => splashController.selectModuleIndex(0),
           icon: Icons.local_grocery_store_rounded,
+          emoji: '🛒',
           color: const Color(0xFF10B981),
           moduleType: AppConstants.grocery,
         ),
         _FoodModuleModuleTabData(
-          label: 'Food',
-          isSelected: splashController.selectedModuleIndex == 1,
+          label: 'Quick Food',
+          isSelected: splashController.selectedModuleIndex == 1 && !isHomeSelected,
           onTap: () => splashController.selectModuleIndex(1),
           icon: Icons.restaurant_rounded,
+          emoji: '🍴',
           color: const Color(0xFFF97316),
           moduleType: AppConstants.food,
         ),
         _FoodModuleModuleTabData(
-          label: 'Shop',
-          isSelected: splashController.selectedModuleIndex == 2,
+          label: 'Quick Ecom',
+          isSelected: splashController.selectedModuleIndex == 2 && !isHomeSelected,
           onTap: () => splashController.selectModuleIndex(2),
           icon: Icons.shopping_bag_rounded,
+          emoji: '🛍',
           color: const Color(0xFF8B5CF6),
           moduleType: AppConstants.ecommerce,
-        ),
-        _FoodModuleModuleTabData(
-          label: 'Pharmacy',
-          isSelected: splashController.selectedModuleIndex == 3,
-          onTap: () => splashController.selectModuleIndex(3),
-          icon: Icons.medical_services_rounded,
-          color: const Color(0xFF0EA5E9),
-          moduleType: AppConstants.pharmacy,
         ),
       ]);
     }
 
     return tabs;
+  }
+
+  static String _getModuleEmoji(String moduleType) {
+    switch (moduleType) {
+      case AppConstants.grocery:
+        return '🛒';
+      case AppConstants.food:
+        return '🍴';
+      case AppConstants.ecommerce:
+        return '🛍';
+      case AppConstants.pharmacy:
+        return '💊';
+      case AppConstants.taxi:
+        return '🚗';
+      case AppConstants.parcel:
+        return '🛵';
+      case AppConstants.ride:
+        return '🚗';
+      default:
+        return '';
+    }
   }
 
   static IconData _getModuleIcon(String moduleType) {
@@ -572,6 +640,7 @@ class _FoodModuleModuleTabData {
   final bool isSelected;
   final VoidCallback? onTap;
   final IconData icon;
+  final String emoji;
   final Color color;
   final String? moduleType;
 
@@ -580,6 +649,7 @@ class _FoodModuleModuleTabData {
     this.isSelected = false,
     this.onTap,
     required this.icon,
+    this.emoji = '',
     required this.color,
     this.moduleType,
   });
@@ -612,7 +682,6 @@ class _ModuleTabsShimmer extends StatelessWidget {
                   duration: const Duration(seconds: 2),
                   child: Container(
                     height: 38,
-                    width: width + 46,
                     decoration: BoxDecoration(
                       color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(22),
@@ -622,6 +691,7 @@ class _ModuleTabsShimmer extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           width: 16,

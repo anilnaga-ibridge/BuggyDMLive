@@ -35,7 +35,7 @@ class _DeliveryDetailsWidgetState extends State<DeliveryDetailsWidget> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Wrap( alignment: WrapAlignment.start, crossAxisAlignment: WrapCrossAlignment.start, runSpacing: 6, children: [
             (widget.deliveryAddress?.streetNumber != null && widget.deliveryAddress!.streetNumber!.isNotEmpty) ? RichText(
-              text: TextSpan(children: [
+              text: TextSpan(children: <InlineSpan>[
                 TextSpan(text: '${'road'.tr} : ', style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
                 TextSpan(text: widget.deliveryAddress?.streetNumber ?? '', style: robotoSemiBold.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
               ]),
@@ -47,7 +47,7 @@ class _DeliveryDetailsWidgetState extends State<DeliveryDetailsWidget> {
             ) : const SizedBox(),
 
             (widget.deliveryAddress?.house != null && widget.deliveryAddress!.house!.isNotEmpty) ? RichText(
-              text: TextSpan(children: [
+              text: TextSpan(children: <InlineSpan>[
                 TextSpan(text: '${'house'.tr} : ', style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
                 TextSpan(text: widget.deliveryAddress?.house ?? '', style: robotoSemiBold.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
               ]),
@@ -59,7 +59,7 @@ class _DeliveryDetailsWidgetState extends State<DeliveryDetailsWidget> {
             ) : const SizedBox(),
 
             (widget.deliveryAddress?.floor != null && widget.deliveryAddress!.floor!.isNotEmpty) ? RichText(
-              text: TextSpan(children: [
+              text: TextSpan(children: <InlineSpan>[
                 TextSpan(text: '${'floor'.tr} : ', style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
                 TextSpan(text: widget.deliveryAddress?.floor ?? '', style: robotoSemiBold.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
               ]),

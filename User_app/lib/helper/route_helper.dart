@@ -60,7 +60,7 @@ import 'package:sixam_mart/features/notification/domain/models/notification_body
 import 'package:sixam_mart/features/notification/screens/notification_screen.dart';
 import 'package:sixam_mart/features/order/domain/models/order_model.dart';
 import 'package:sixam_mart/features/order/screens/guest_track_order_screen.dart';
-import 'package:sixam_mart/features/order/screens/order_screen.dart';
+import 'package:sixam_mart/features/order/screens/my_order_screen.dart';
 import 'package:sixam_mart/features/order/screens/order_tracking_screen.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/grocery_order_flow_screen.dart';
 import 'package:sixam_mart/features/order/screens/refund_request_screen.dart';
@@ -83,6 +83,7 @@ import 'package:sixam_mart/features/payment/screens/offline_payment_screen.dart'
 import 'package:sixam_mart/features/payment/screens/payment_screen.dart';
 import 'package:sixam_mart/features/payment/screens/payment_webview_screen.dart';
 import 'package:sixam_mart/features/profile/domain/models/update_user_model.dart';
+import 'package:sixam_mart/features/review/screens/rate_review_screen.dart';
 import 'package:sixam_mart/features/profile/screens/profile_screen.dart';
 import 'package:sixam_mart/features/profile/screens/setting_page.dart';
 import 'package:sixam_mart/features/profile/screens/update_profile_screen.dart';
@@ -339,7 +340,7 @@ class RouteHelper {
 
   static String getCheckoutRoute(String page, {int? storeId}) => '$checkout?page=$page${storeId != null ? '&store-id=$storeId' : ''}&module=${ModuleHelper.getModule()?.slug ?? ModuleHelper.getModule()?.id??ModuleHelper.getCacheModule()?.slug}';
   static String getOrderTrackingRoute(int? id, String? contactNumber) => '$orderTracking?id=$id&number=$contactNumber';
-  static String getGroceryTrackingFlowRoute({int id = 728912}) => '$groceryTrackingFlow?id=$id';
+  static String getGroceryTrackingFlowRoute({int id = 100003}) => '$groceryTrackingFlow?id=$id';
   static String getBasicCampaignRoute(BasicCampaignModel basicCampaignModel) {
     String data = base64Encode(utf8.encode(jsonEncode(basicCampaignModel.toJson())));
     return '$basicCampaign?module=${ModuleHelper.getModule()?.slug ?? ModuleHelper.getModule()?.id}&data=$data';
@@ -661,8 +662,11 @@ class RouteHelper {
       ), byPuss: true);
     }),
     GetPage(name: groceryTrackingFlow, page: () {
+      final int orderId = int.tryParse(Get.parameters['id'] ?? '') ?? 100003;
+      final OrderModel? orderModel = Get.arguments is OrderModel ? (Get.arguments as OrderModel) : null;
       return getRoute(GroceryOrderFlowScreen(
-        orderId: int.parse(Get.parameters['id'] ?? '728912'),
+        orderId: orderId,
+        orderModel: orderModel,
       ), byPuss: true);
     }),
     GetPage(name: profile, page: () => const ProfileScreen()),
@@ -858,7 +862,12 @@ class RouteHelper {
         address: data, forGuest: Get.parameters['from-guest'] == 'true',
       ));
     }),
-    GetPage(name: rateReview, page: () => getRoute(Get.arguments ?? const NotFound())),
+    GetPage(name: rateReview, page: () {
+      if (Get.arguments is Widget) {
+        return getRoute(Get.arguments as Widget);
+      }
+      return getRoute(const RateReviewScreen());
+    }),
     GetPage(name: '$storeReview/:slug', page: () {
       return getRoute(
         byPuss: (Get.parameters['module'] != null && Get.parameters['module']!.isNotEmpty && Get.parameters['module'] != 'null'),
@@ -964,7 +973,7 @@ class RouteHelper {
       destinationAddress: AddressModel.fromJson(jsonDecode(utf8.decode(base64Url.decode(Get.parameters['destination']!.replaceAll(' ', '+'))))),
     ))),
     GetPage(name: searchStoreItem, page: () => getRoute(StoreItemSearchScreen(storeID: Get.parameters['id']))),
-    GetPage(name: order, page: () => getRoute(byPuss: true, const OrderScreen())),
+    GetPage(name: order, page: () => getRoute(byPuss: true, const MyOrderScreen())),
     GetPage(name: '$itemDetails/:slug', page: () {
       return getRoute(
         byPuss: (Get.parameters['module'] != null && Get.parameters['module']!.isNotEmpty && Get.parameters['module'] != 'null'),

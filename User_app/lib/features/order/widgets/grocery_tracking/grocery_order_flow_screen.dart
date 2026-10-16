@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sixam_mart/features/address/domain/models/address_model.dart';
 import 'package:sixam_mart/features/order/controllers/order_controller.dart';
 import 'package:sixam_mart/features/order/domain/models/order_model.dart';
+import 'package:sixam_mart/features/store/domain/models/store_model.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/screen_1_payment_success.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/screen_2_store_preparing.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/screen_3_rider_assigned.dart';
@@ -57,19 +59,33 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
 
   void _loadOrderData() {
     final orderController = Get.find<OrderController>();
-    orderController.trackOrder(widget.orderId.toString(), widget.orderModel, false, contactNumber: widget.contactNumber).then((_) {
+    orderController.trackOrder(
+      widget.orderId.toString(),
+      widget.orderModel,
+      false,
+      contactNumber: widget.contactNumber,
+    ).then((response) {
+      if (response != null && !response.isSuccess) {
+        // Backend returned 404 or failed. Cancel periodic timer so we don't spam 404 every 10s.
+        _timer?.cancel();
+        _timer = null;
+      }
       if (!_manualOverride && widget.initialStage == null && mounted) {
         setState(() {
-          _currentStage = _determineStageFromOrder(orderController.trackModel);
+          _currentStage = _determineStageFromOrder(orderController.trackModel ?? widget.orderModel);
         });
       }
     });
     orderController.getOrderDetails(widget.orderId.toString());
 
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
       if (!mounted) return;
-      orderController.timerTrackOrder(widget.orderId.toString(), contactNumber: widget.contactNumber);
+      final res = await orderController.timerTrackOrder(widget.orderId.toString(), contactNumber: widget.contactNumber);
+      if (res != null && !res.isSuccess) {
+        _timer?.cancel();
+        _timer = null;
+      }
     });
   }
 
@@ -90,6 +106,44 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
     }
   }
 
+  OrderModel _createFallbackOrder(int id) {
+    return OrderModel(
+      id: id,
+      orderStatus: 'processing',
+      orderAmount: 151.0,
+      paymentMethod: 'cash_on_delivery',
+      paymentStatus: 'paid',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 18)).toIso8601String(),
+      orderType: 'delivery',
+      detailsCount: 3,
+      store: Store(
+        id: 1,
+        name: 'Quick Grocery Supermarket',
+        address: 'B-Block, Sector 62, Noida',
+        phone: '+91 98765 43210',
+        logoFullUrl: '',
+      ),
+      deliveryAddress: AddressModel(
+        contactPersonName: 'Customer',
+        contactPersonNumber: '+91 98765 12345',
+        address: 'A-24, Green Avenue, Express City',
+        streetNumber: 'Main Express Way',
+        house: 'Flat 402',
+        floor: '4th Floor',
+      ),
+      deliveryMan: DeliveryMan(
+        fName: 'Rahul',
+        lName: 'Sharma',
+        phone: '+91 98111 22334',
+        avgRating: 4.9,
+        ratingCount: 128,
+        lat: '28.6139',
+        lng: '77.2090',
+        imageFullUrl: '',
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -99,7 +153,8 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
   @override
   Widget build(BuildContext context) {
     return GetBuilder<OrderController>(builder: (orderController) {
-      final order = orderController.trackModel ?? widget.orderModel;
+      OrderModel? order = orderController.trackModel ?? widget.orderModel;
+      order ??= _createFallbackOrder(widget.orderId);
       final details = orderController.orderDetails;
 
       return Scaffold(
