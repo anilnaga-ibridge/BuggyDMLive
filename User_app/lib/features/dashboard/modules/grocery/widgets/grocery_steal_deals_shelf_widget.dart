@@ -118,6 +118,8 @@ Widget _buildSafeImage(
       width: width,
       height: height,
       fit: fit,
+      cacheWidth: 300,
+      filterQuality: FilterQuality.low,
       errorBuilder: (_, __, ___) => defaultError,
     );
   }
@@ -676,8 +678,9 @@ class _StealProductCard extends StatelessWidget {
     final dynamic image = prod['image'];
     final dynamic id = prod['id'];
 
-    return InkWell(
-      onTap: () {
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: () {
         if (id != null && id.toString().isNotEmpty && id != 'null') {
           final int? itemId = int.tryParse(id.toString());
           if (itemId != null && itemId > 0) {
@@ -806,6 +809,7 @@ class _StealProductCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

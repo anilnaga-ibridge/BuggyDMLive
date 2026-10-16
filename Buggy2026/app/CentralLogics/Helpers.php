@@ -220,8 +220,14 @@ class Helpers
 
     public static function productListDataFormatting($data)
     {
-        return collect($data)->map(function ($item) {
-            $discount = self::product_discount_calculate($item, $item->price, $item->store, true);
+        $item_ids = collect($data)->pluck('id')->filter()->unique()->values()->all();
+        $running_flash_sales = !empty($item_ids)
+            ? self::runningFlashSaleQuery()->whereIn('item_id', $item_ids)->get()->keyBy('item_id')
+            : collect();
+
+        return collect($data)->map(function ($item) use ($running_flash_sales) {
+            $running_flash_sale = $running_flash_sales[$item->id] ?? null;
+            $discount = self::product_discount_calculate($item, $item->price, $item->store, true, $running_flash_sale);
             $module_type = $item->store?->module_type;
             $has_variant = $module_type == 'food' ? $item->food_variations : $item->variations;
             $has_variant = is_string($has_variant) ? json_decode($has_variant, true) : $has_variant;
@@ -1613,13 +1619,15 @@ class Helpers
         return $discount;
     }
 
-    public static function product_discount_calculate($product, $price, $store, $check_store_discount = true)
+    public static function product_discount_calculate($product, $price, $store, $check_store_discount = true, $preloaded_flash_sale = 'not_provided')
     {
         $discount_percentage = 0;
         $store_discount_percentage = 0;
         $store_discount = null;
 
-        $running_flash_sale = self::getRunningFlashSale($product->id);
+        $running_flash_sale = ($preloaded_flash_sale !== 'not_provided')
+            ? $preloaded_flash_sale
+            : self::getRunningFlashSale($product->id);
 
         if ($running_flash_sale) {
             $discount_percentage = $running_flash_sale['discount'];

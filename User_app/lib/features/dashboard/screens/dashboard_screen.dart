@@ -78,7 +78,7 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   late bool _isLogin;
   bool active = false;
-  bool _navBarVisible = true;
+  final ValueNotifier<bool> _navBarVisibleNotifier = ValueNotifier<bool>(true);
 
   // Tracks whether an opaque page has been pushed over the dashboard, so the
   // home status-bar tint overlay only shows while the home tab is actually the
@@ -116,10 +116,10 @@ class DashboardScreenState extends State<DashboardScreen> {
     // Only react to vertical scrolls — horizontal carousels (e.g. banner/store
     // sliders) also bubble UserScrollNotifications, and should not hide the navbar.
     if (notification is UserScrollNotification && notification.metrics.axis == Axis.vertical) {
-      if (notification.direction == ScrollDirection.reverse && _navBarVisible) {
-        setState(() => _navBarVisible = false);
-      } else if (notification.direction == ScrollDirection.forward && !_navBarVisible) {
-        setState(() => _navBarVisible = true);
+      if (notification.direction == ScrollDirection.reverse && _navBarVisibleNotifier.value) {
+        _navBarVisibleNotifier.value = false;
+      } else if (notification.direction == ScrollDirection.forward && !_navBarVisibleNotifier.value) {
+        _navBarVisibleNotifier.value = true;
       }
     }
     // Programmatic scrolls (e.g. back-to-top button) don't emit UserScrollNotification.
@@ -127,8 +127,8 @@ class DashboardScreenState extends State<DashboardScreen> {
     if (notification is ScrollEndNotification &&
         notification.metrics.axis == Axis.vertical &&
         notification.metrics.pixels <= 0 &&
-        !_navBarVisible) {
-      setState(() => _navBarVisible = true);
+        !_navBarVisibleNotifier.value) {
+      _navBarVisibleNotifier.value = true;
     }
     return false;
   }
@@ -200,6 +200,7 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    _navBarVisibleNotifier.dispose();
     _secondaryAnimation?.removeListener(_onCoverChanged);
     _pageController?.dispose();
     HomeStatusBarTint.active.value = false;
@@ -298,17 +299,20 @@ class DashboardScreenState extends State<DashboardScreen> {
                     // Lift the FAB by the banner's height while the promo is shown so
                     // they never overlap.
                     final double promoOffset = _shouldShowNavbarPromo(flashSaleController, splashController) ? _kPromoBannerReservedHeight : 0;
-                    return IgnorePointer(
-                      ignoring: !_navBarVisible,
-                      child: AnimatedScale(
-                        scale: _navBarVisible ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutBack,
-                        child: AnimatedOpacity(
-                          opacity: _navBarVisible ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          child: _HomeFloatingActionButton(splashController: splashController, extraBottomOffset: promoOffset),
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: _navBarVisibleNotifier,
+                      builder: (context, navBarVisible, _) => IgnorePointer(
+                        ignoring: !navBarVisible,
+                        child: AnimatedScale(
+                          scale: navBarVisible ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutBack,
+                          child: AnimatedOpacity(
+                            opacity: navBarVisible ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                            child: _HomeFloatingActionButton(splashController: splashController, extraBottomOffset: promoOffset),
+                          ),
                         ),
                       ),
                     );
@@ -332,21 +336,24 @@ class DashboardScreenState extends State<DashboardScreen> {
                       // away together with the navbar when scrolling down.
                       ResponsiveHelper.isDesktop(context) || keyboardVisible ? const SizedBox() : Positioned(
                         bottom: 0, left: 0, right: 0,
-                        child: IgnorePointer(
-                          child: AnimatedSlide(
-                            offset: _navBarVisible ? Offset.zero : const Offset(0, 1),
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeInOut,
-                            child: Container(
-                              height: 40,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                  colors: [
-                                    Theme.of(context).cardColor,
-                                    Theme.of(context).cardColor.withValues(alpha: 0.0),
-                                  ],
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: _navBarVisibleNotifier,
+                          builder: (context, navBarVisible, _) => IgnorePointer(
+                            child: AnimatedSlide(
+                              offset: navBarVisible ? Offset.zero : const Offset(0, 1),
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      Theme.of(context).cardColor,
+                                      Theme.of(context).cardColor.withValues(alpha: 0.0),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -358,13 +365,18 @@ class DashboardScreenState extends State<DashboardScreen> {
                         bottom: Dimensions.paddingSizeDefault,
                         left: Dimensions.paddingSizeDefault,
                         right: Dimensions.paddingSizeDefault,
-                        child: IgnorePointer(
-                          ignoring: !_navBarVisible,
-                          child: AnimatedSlide(
-                            offset: _navBarVisible ? Offset.zero : const Offset(0, 2),
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeInOut,
-                            child: Stack(alignment: Alignment.bottomCenter, children: [
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: _navBarVisibleNotifier,
+                          builder: (context, navBarVisible, child) => IgnorePointer(
+                            ignoring: !navBarVisible,
+                            child: AnimatedSlide(
+                              offset: navBarVisible ? Offset.zero : const Offset(0, 2),
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                              child: child,
+                            ),
+                          ),
+                          child: Stack(alignment: Alignment.bottomCenter, children: [
                               // Banner tucked behind the pill: a bottom padding equal to
                               // (pill height − overlap) sizes the Stack so the banner is
                               // fully laid out (and tappable), while its empty bottom slides
@@ -472,13 +484,12 @@ class DashboardScreenState extends State<DashboardScreen> {
                               );
                             },
                           ),
-                          ),
                         ),
-                            ]),
-                          ),
                         ),
-                      ),
-                    ]),
+                      ]),
+                    ),
+                  ),
+                ]),
 
                     persistentContentHeight: (widget.fromSplash && Get.find<LocationController>().showLocationSuggestion && active) ? 0 : GetPlatform.isIOS ? 110 : 100,
 

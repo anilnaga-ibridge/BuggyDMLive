@@ -131,6 +131,8 @@ Widget _buildSafeImage(
       width: width,
       height: height,
       fit: fit,
+      cacheWidth: 300,
+      filterQuality: FilterQuality.low,
       errorBuilder: (context, error, stackTrace) => defaultError,
     );
   }

@@ -346,8 +346,8 @@ class CxpThemeModel {
   }
 
   // ===================== Colors =====================
-  Color get primaryColor => _parseColor('sys.color.primary', const Color(0xFF039D55));
-  Color get secondaryColor => _parseColor('sys.color.secondary', const Color(0xFFFF9900));
+  Color get primaryColor => _parseColor('sys.color.primary', const Color(0xFF3CC3BA));
+  Color get secondaryColor => _parseColor('sys.color.secondary', const Color(0xFF3CC3BA));
   Color get accentColor => _parseColor('sys.color.accent', const Color(0xFFFFD700));
   Color get backgroundColor => _parseColor('sys.color.background', const Color(0xFFF7FBFA));
   Color get surfaceColor => _parseColor('sys.color.surface', Colors.white);
@@ -358,8 +358,8 @@ class CxpThemeModel {
   Color get successColor => _parseColor('sys.color.success', const Color(0xFF16834A));
   Color get warningColor => _parseColor('sys.color.warning', const Color(0xFFF59E0B));
   Color get errorColor => _parseColor('sys.color.error', const Color(0xFFE11D48));
-  Color get gradientFrom => _parseColor('sys.color.gradient_from', const Color(0xFF039D55));
-  Color get gradientTo => _parseColor('sys.color.gradient_to', const Color(0xFF004D2E));
+  Color get gradientFrom => _parseColor('sys.color.gradient_from', const Color(0xFF3CC3BA));
+  Color get gradientTo => _parseColor('sys.color.gradient_to', const Color(0xFF2B9A92));
   bool get isDark => tokens['sys.color.scheme'] == 'dark';
 
   // ===================== Gradients =====================

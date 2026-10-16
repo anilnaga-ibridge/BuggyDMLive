@@ -654,8 +654,8 @@ Future<Map<String, Map<String, String>>> init() async {
 
 
   /// Controller
-  Get.lazyPut(() => ThemeController(sharedPreferences: Get.find()));
-  Get.lazyPut(() => CxpExperienceController(sharedPreferences: Get.find<SharedPreferences>()));
+  Get.put(ThemeController(sharedPreferences: sharedPreferences), permanent: true);
+  Get.put(CxpExperienceController(sharedPreferences: sharedPreferences), permanent: true);
   Get.lazyPut(() => SplashController(splashServiceInterface: Get.find()));
   Get.lazyPut(() => AddressController(addressServiceInterface: Get.find()));
   Get.lazyPut(() => LocationController(locationServiceInterface: locationServiceInterface));

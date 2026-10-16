@@ -24,7 +24,7 @@ class _GrocerySearchBarWidgetState extends State<GrocerySearchBarWidget> {
     'Search "tea & coffee"',
   ];
 
-  int _currentHintIndex = 0;
+  final ValueNotifier<int> _hintIndexNotifier = ValueNotifier<int>(0);
   Timer? _hintTimer;
 
   @override
@@ -32,9 +32,7 @@ class _GrocerySearchBarWidgetState extends State<GrocerySearchBarWidget> {
     super.initState();
     _hintTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (mounted) {
-        setState(() {
-          _currentHintIndex = (_currentHintIndex + 1) % _hints.length;
-        });
+        _hintIndexNotifier.value = (_hintIndexNotifier.value + 1) % _hints.length;
       }
     });
   }
@@ -42,6 +40,7 @@ class _GrocerySearchBarWidgetState extends State<GrocerySearchBarWidget> {
   @override
   void dispose() {
     _hintTimer?.cancel();
+    _hintIndexNotifier.dispose();
     super.dispose();
   }
 
@@ -112,28 +111,31 @@ class _GrocerySearchBarWidgetState extends State<GrocerySearchBarWidget> {
 
                           // Animated placeholder
                           Expanded(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 350),
-                              transitionBuilder: (child, animation) {
-                                return SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.0, 0.4),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: FadeTransition(opacity: animation, child: child),
-                                );
-                              },
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                key: ValueKey<int>(_currentHintIndex),
-                                child: Text(
-                                  _hints[_currentHintIndex],
-                                  style: robotoMedium.copyWith(
-                                    fontSize: 14,
-                                    color: const Color(0xFF475569),
+                            child: ValueListenableBuilder<int>(
+                              valueListenable: _hintIndexNotifier,
+                              builder: (context, hintIndex, _) => AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 350),
+                                transitionBuilder: (child, animation) {
+                                  return SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0.0, 0.4),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: FadeTransition(opacity: animation, child: child),
+                                  );
+                                },
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  key: ValueKey<int>(hintIndex),
+                                  child: Text(
+                                    _hints[hintIndex],
+                                    style: robotoMedium.copyWith(
+                                      fontSize: 14,
+                                      color: const Color(0xFF475569),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),

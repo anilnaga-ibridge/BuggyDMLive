@@ -22,6 +22,13 @@ body.theme-dark {
   background-color: #fff;
   display: grid;
   place-items: center;
+  z-index: 99999;
+  transition: opacity 300ms ease;
+}
+
+.preloader.preloader-fade-out {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .theme-dark .preloader {
@@ -29,81 +36,61 @@ body.theme-dark {
   color: #FFF;
 }
 
-@media (max-width: 1199px) {.header {display: none}}
-
-.preloader-img {
-  animation: animloaderimg 3000ms ease-in-out infinite;
-}
 .preloader-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
+
+.quick-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: animloaderimg 2400ms ease-in-out infinite;
+}
+
+.quick-brand-title {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #1E293B;
+}
+
+.theme-dark .quick-brand-title {
+  color: #FFFFFF;
+}
+
 .preloader .loader {
-  width: 140px;
-  height: 0.25rem;
+  width: 120px;
+  height: 0.22rem;
   display: inline-block;
   position: relative;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(60, 195, 186, 0.18);
   overflow: hidden;
   border-radius: 50rem;
 }
+
 .theme-dark .preloader .loader {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
 }
+
 .preloader .loader::after {
   content: "";
-  width: 30px;
-  height: 4.8px;
-  background: #000;
+  width: 38px;
+  height: 100%;
+  background: linear-gradient(90deg, #3CC3BA, #2B9A92);
   position: absolute;
   top: 0;
   left: 0;
   box-sizing: border-box;
-  animation: animloader 2000ms linear infinite;
+  animation: animloader 1500ms ease-in-out infinite;
   border-radius: 50rem;
 }
-.theme-dark .preloader .loader::after {
-  background: #FFF;
-}
-.header {
-  position: fixed;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  inline-size: 100%;
-}
-.theme-dark .header {
-  background-color: #222;
-  color: #FFF;
-}
-.header-container {
-  max-inline-size: 1200px;
-  margin-inline: auto;
-  padding: 1.28rem 1.6rem;
-  background-color: #fff;
-  box-shadow: 0px 6px 12px -3px rgba(4, 97, 165, 0.1);
-  border-radius: 0 0 0.625rem 0.625rem;
-}
 
-.theme-dark .header-container {
-  background-color: #222;
-  color: #FFF;
-}
-.header .logo {
-  max-height: 30px;
-}
-.placeholder {
-  block-size: 0.825rem;
-  inline-size: 3rem;
-  background-color: #F5F5F5;
-  border-radius: 0.3rem;
-}
-.theme-dark .placeholder {
-  background-color: #555;
-}
-.placeholder-wide {
-  inline-size: 12rem;
+.theme-dark .preloader .loader::after {
+  background: linear-gradient(90deg, #3CC3BA, #5EEAD4);
 }
 
 .d-flex {

@@ -145,6 +145,8 @@ Widget _buildSafeImage(
       width: width,
       height: height,
       fit: fit,
+      cacheWidth: 300,
+      filterQuality: FilterQuality.low,
       errorBuilder: (context, error, stackTrace) => defaultError,
     );
   }
@@ -474,21 +476,25 @@ class _GroceryCuratedProductGridWidgetState
                 // ---------------------------------------------------------------------
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: products.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 0.46,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 10,
+                  child: Column(
+                    children: [
+                      for (int r = 0; r < products.length; r += 3) ...[
+                        if (r > 0) const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (int c = 0; c < 3; c++) ...[
+                              if (c > 0) const SizedBox(width: 8),
+                              Expanded(
+                                child: (r + c < products.length)
+                                    ? _buildProductCard(context, r + c, products[r + c])
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          ],
                         ),
-                    itemBuilder: (context, index) {
-                      final prod = products[index];
-                      return _buildProductCard(context, index, prod);
-                    },
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -764,25 +770,27 @@ class _GroceryCuratedProductGridWidgetState
 
     final cardDecs = cxp.getProductCardDecorations();
     if (cardDecs.isEmpty) {
-      return card;
+      return RepaintBoundary(child: card);
     }
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        card,
-        ...cardDecs.where((d) => d.mobile).map((d) {
-          final isLeft = d.positionX.toLowerCase() == 'left';
-          final isBottom = d.positionY.toLowerCase() == 'bottom';
-          return Positioned(
-            left: isLeft ? 4 : null,
-            right: !isLeft ? 4 : null,
-            top: !isBottom ? 4 : null,
-            bottom: isBottom ? 4 : null,
-            child: CxpDecorationWidget(decoration: d),
-          );
-        }),
-      ],
+    return RepaintBoundary(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          card,
+          ...cardDecs.where((d) => d.mobile).map((d) {
+            final isLeft = d.positionX.toLowerCase() == 'left';
+            final isBottom = d.positionY.toLowerCase() == 'bottom';
+            return Positioned(
+              left: isLeft ? 4 : null,
+              right: !isLeft ? 4 : null,
+              top: !isBottom ? 4 : null,
+              bottom: isBottom ? 4 : null,
+              child: CxpDecorationWidget(decoration: d),
+            );
+          }),
+        ],
+      ),
     );
   }
 }

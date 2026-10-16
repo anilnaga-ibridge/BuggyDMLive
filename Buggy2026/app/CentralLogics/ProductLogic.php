@@ -551,7 +551,7 @@ class ProductLogic
                 $withCount[] = 'reviews';
             }
 
-            $query = Item::with('store')
+            $query = Item::with(['store.storeConfig', 'unit', 'translations', 'storeCategory'])
                   ->when(config('module.current_module_data'), function($query){
                     $query->where('module_id', config('module.current_module_data')['id']);
                 })

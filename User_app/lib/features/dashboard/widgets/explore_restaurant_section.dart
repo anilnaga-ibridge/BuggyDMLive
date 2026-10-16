@@ -164,12 +164,14 @@ class FoodModuleExploreRestaurantsListWidget extends StatelessWidget {
             final Store store = stores[index];
             return Padding(
               padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
-              child: FeaturedStoreCard(
-                data: store,
-                width: double.infinity,
-                imageHeight: 150,
-                isQuick: false,
-                onTap: () => _openStore(store),
+              child: RepaintBoundary(
+                child: FeaturedStoreCard(
+                  data: store,
+                  width: double.infinity,
+                  imageHeight: 150,
+                  isQuick: false,
+                  onTap: () => _openStore(store),
+                ),
               ),
             );
           },

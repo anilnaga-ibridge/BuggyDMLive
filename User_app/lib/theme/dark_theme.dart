@@ -4,15 +4,15 @@ import 'package:sixam_mart/theme/buggy_cxp_theme_extension.dart';
 import 'package:sixam_mart/util/app_constants.dart';
 
 ThemeData dark({Color? color, CxpThemeModel? cxpTheme}) {
-  final effectiveColor = color ?? cxpTheme?.primaryColor ?? const Color(0xFF54b46b);
-  final ext = cxpTheme != null
-      ? BuggyCxpThemeExtension.fromCxpTheme(cxpTheme)
-      : BuggyCxpThemeExtension.defaultTheme;
+  final fallbackTheme = CxpThemeModel.defaultBuggyTheme;
+  final effectiveCxpTheme = cxpTheme ?? fallbackTheme;
+  final effectiveColor = color ?? effectiveCxpTheme.primaryColor;
+  final ext = BuggyCxpThemeExtension.fromCxpTheme(effectiveCxpTheme);
 
   return ThemeData(
     fontFamily: AppConstants.fontFamily,
     primaryColor: effectiveColor,
-    secondaryHeaderColor: cxpTheme?.secondaryColor ?? const Color(0xFF009f67),
+    secondaryHeaderColor: effectiveCxpTheme.secondaryColor,
     disabledColor: const Color(0xffa2a7ad),
     brightness: Brightness.dark,
     hintColor: const Color(0xFFbebebe),

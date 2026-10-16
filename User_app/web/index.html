@@ -2,6 +2,9 @@
 <html>
 
 <head>
+  <!-- Content Security Policy for Flutter Web & CanvasKit -->
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' blob: data: https: http:; script-src-elem * 'unsafe-inline' 'unsafe-eval' blob: data: https: http:; style-src * 'unsafe-inline'; font-src * data:; img-src * data: blob:; connect-src *;">
+
   <base href="/">
 
   <meta charset="UTF-8">
@@ -12,7 +15,8 @@
   <!--  <link rel="canonical" href="https://6ammart-web.6amtech.com/" />-->
   <!--  <meta name="robots" content="nofollow, noindex, max-snippet:1, max-video-preview:1, max-image-preview:standard">-->
 
-  <!-- iOS meta tags & icons -->
+  <!-- iOS / Mobile meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="StackFood">
@@ -33,10 +37,6 @@
   <script type="application/javascript" src="/assets/packages/flutter_inappwebview_web/assets/web/web_support.js"
     defer></script>
 
-  <script>
-    // The value below is injected by flutter build, do not touch.
-    var serviceWorkerVersion = null;
-  </script>
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js?version=3.9.1.1" defer></script>
 </head>
@@ -60,122 +60,19 @@
 
   <div class="preloader">
     <div class="preloader-container">
-      <img width="50" class="preloader-img" src="favicon.png" alt="">
+      <div class="quick-brand-mark">
+        <svg width="52" height="52" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="14" fill="#3CC3BA"/>
+          <path d="M25.5 10L14 26H24L22.5 38L34 22H24L25.5 10Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="quick-brand-title">Quick</div>
       <div class="loader"></div>
     </div>
   </div>
 
-
-  <header class="header">
-    <div class="header-container d-flex align-items-center justify-content-between">
-      <div class="header-start d-flex gap-5 align-items-center">
-        <img class="logo" src="logo.png" alt="">
-        <div class="placeholder placeholder-wide"></div>
-        <div class="placeholder"></div>
-        <div class="placeholder"></div>
-        <div class="placeholder"></div>
-      </div>
-      <div class="header-end d-flex gap-5">
-        <div class="placeholder"></div>
-        <div class="placeholder"></div>
-        <div class="placeholder"></div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Script Goes Here -->
-  <script>
-    // Check if localStorage is supported in the browser
-    if (typeof (Storage) !== "undefined") {
-      // Get the item from localStorage
-      var itemValue = localStorage.getItem("flutter.6ammart_theme");
-      // Check if the item exists
-      if (itemValue !== null) {
-        // Check the value of the item
-        if (itemValue === "true") {
-          // If the value is "true", add a class to the body
-          document.body.classList.add("theme-dark");
-        } else {
-          // If the value is not "true", remove the class from the body
-          document.body.classList.remove("theme-light");
-        }
-      } else {
-        console.log("Item not found in localStorage");
-      }
-    } else {
-      console.log("localStorage is not supported in this browser");
-    }
-
-  </script>
-
-  <script>
-    document.querySelectorAll("img.svg").forEach(function (img) {
-      var imgID = img.getAttribute("id");
-      var imgClass = img.getAttribute("class");
-      var imgURL = img.getAttribute("src");
-      // Create a new XMLHttpRequest
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", imgURL, true);
-      // Set the responseType to "document" to parse the response as an XML document
-      xhr.responseType = "document";
-      xhr.onload = function () {
-        if (xhr.status === 200) {
-          var data = xhr.response;
-          // Get the SVG tag from the response, ignore the rest
-          var svg = data.querySelector("svg");
-          // Add replaced image's ID to the new SVG
-          if (typeof imgID !== "undefined") {
-            svg.setAttribute("id", imgID);
-          }
-          // Add replaced image's classes to the new SVG
-          if (typeof imgClass !== "undefined") {
-            svg.setAttribute("class", imgClass + " replaced-svg");
-          }
-          // Remove any invalid XML tags
-          svg.removeAttribute("xmlns:a");
-          // Check if the viewport is set; set it if not
-          if (!svg.getAttribute("viewBox") && svg.getAttribute("height") && svg.getAttribute("width")) {
-            svg.setAttribute("viewBox", "0 0 " + svg.getAttribute("height") + " " + svg.getAttribute("width"));
-          }
-          // Replace the image with the new SVG
-          img.parentNode.replaceChild(svg, img);
-        }
-      };
-      xhr.send();
-    });
-  </script>
-
-  <!--  <script>-->
-  <!--    {{flutter_bootstrap_js}}-->
-  <!--  </script>-->
-
-  <script>
-    window.addEventListener('load', function (ev) {
-      _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
-        },
-        onEntrypointLoaded: function (engineInitializer) {
-          let config = { renderer: 'canvaskit' };
-          engineInitializer.initializeEngine(config).then(function (appRunner) {
-            if (document.getElementById('splash'))
-              document.getElementById('splash').remove();
-            appRunner.runApp();
-          });
-        }
-      });
-    });
-  </script>
-
-  <script>
-    // Delay the removal of the preloader by 500 milliseconds
-    function removePreloader() {
-      const preloader = document.querySelector('.preloader');
-      if (preloader) {
-        preloader.remove();
-      }
-    }
-  </script>
+  <!-- Main application scripts -->
+  <script src="app_init.js" defer></script>
 
   <!-- Firebase is initialized by Flutter plugins and lines 52-53 -->
 

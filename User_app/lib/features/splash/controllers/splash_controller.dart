@@ -233,7 +233,10 @@ class SplashController extends GetxController implements GetxService {
   void _onRemoveLoader() {
     final preloader = html.document.querySelector('.preloader');
     if (preloader != null) {
-      preloader.remove();
+      preloader.classes.add('preloader-fade-out');
+      Future.delayed(const Duration(milliseconds: 320), () {
+        preloader.remove();
+      });
     }
   }
 

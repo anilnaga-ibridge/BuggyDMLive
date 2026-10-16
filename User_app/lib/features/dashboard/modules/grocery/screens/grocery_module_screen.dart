@@ -93,17 +93,21 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
           ),
         ),
 
-        // 3. Dynamic Grocery Sections configured in CXP
-        SliverToBoxAdapter(
-          child: GetBuilder<CxpExperienceController>(
-            builder: (cxpController) {
-              final activeSections = cxpController.activeSections
-                  .where((s) => !s.id.toLowerCase().contains('hero') && !s.id.toLowerCase().contains('flavour'))
-                  .toList();
+        // 3. Dynamic Grocery Sections configured in CXP (Lazy Slivers)
+        GetBuilder<CxpExperienceController>(
+          builder: (cxpController) {
+            final activeSections = cxpController.activeSections
+                .where((s) => !s.id.toLowerCase().contains('hero') && !s.id.toLowerCase().contains('flavour'))
+                .toList();
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: activeSections.map((section) {
+            if (activeSections.isEmpty) {
+              return const SliverToBoxAdapter(child: SizedBox.shrink());
+            }
+
+            return SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final section = activeSections[index];
                   final sectionDecs = context.cxpTheme.getSectionDecorations(section.id);
                   final hasRibbon = sectionDecs.any((d) => d.type == 'ribbon');
 
@@ -124,10 +128,11 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
                       ],
                     ),
                   );
-                }).toList(),
-              );
-            },
-          ),
+                },
+                childCount: activeSections.length,
+              ),
+            );
+          },
         ),
 
         // 3. Last Orders Section (collapses when empty)

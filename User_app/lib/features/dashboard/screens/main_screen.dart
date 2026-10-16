@@ -98,25 +98,48 @@ class _MainScreenState extends State<MainScreen> with AutomaticKeepAliveClientMi
       return;
     }
 
-    final double? searchHeaderTop = _getSearchHeaderTop();
-    // Pin when the header reaches the viewport top; unpin only once it's _pinHysteresis
-    // px back in view. This dead zone prevents rapid toggling at the boundary.
+    final double scrollOffset = _scrollController.position.pixels;
+    final bool showBackToTop = scrollOffset > _backToTopThreshold;
+
+    // Fast-path for top header: only measure tree when near the transition boundary (0 to 250px)
+    final bool isTopHeaderScrolledOut;
+    if (scrollOffset <= 0) {
+      isTopHeaderScrolledOut = false;
+    } else if (scrollOffset > 250) {
+      isTopHeaderScrolledOut = true;
+    } else {
+      isTopHeaderScrolledOut = _getIsTopHeaderScrolledOut();
+    }
+
+    // Fast-path for search header: only measure tree near the top header exit window
+    final double? searchHeaderTop = (scrollOffset > 350) ? -1.0 : _getSearchHeaderTop();
     final bool isPinned = searchHeaderTop != null && (_isSearchPinned
         ? searchHeaderTop <= _pinHysteresis
         : searchHeaderTop <= 0);
-    final double? exploreRestaurantFilterTop = _getExploreRestaurantFilterTop();
-    final double pinnedTopFilterScrollOutOffset = _getPinnedTopFilterScrollOutOffset(exploreRestaurantFilterTop);
-    final bool isExploreRestaurantFilterPinned = exploreRestaurantFilterTop != null && (_isExploreRestaurantFilterPinned
-        ? exploreRestaurantFilterTop <= SearchAndQuickFilterWidget.searchOnlyHeight + _pinHysteresis
-        : exploreRestaurantFilterTop <= SearchAndQuickFilterWidget.searchOnlyHeight);
-    final bool showBackToTop = _scrollController.position.pixels > _backToTopThreshold;
-    final bool isTopHeaderScrolledOut = _getIsTopHeaderScrolledOut();
+
+    // Fast-path for explore restaurant filter: section is thousands of pixels down the page,
+    // so skip expensive tree walks when scrollOffset < 800
+    final double? exploreRestaurantFilterTop;
+    final double pinnedTopFilterScrollOutOffset;
+    final bool isExploreRestaurantFilterPinned;
+    if (scrollOffset < 800) {
+      exploreRestaurantFilterTop = null;
+      pinnedTopFilterScrollOutOffset = 0.0;
+      isExploreRestaurantFilterPinned = false;
+    } else {
+      exploreRestaurantFilterTop = _getExploreRestaurantFilterTop();
+      pinnedTopFilterScrollOutOffset = _getPinnedTopFilterScrollOutOffset(exploreRestaurantFilterTop);
+      isExploreRestaurantFilterPinned = exploreRestaurantFilterTop != null && (_isExploreRestaurantFilterPinned
+          ? exploreRestaurantFilterTop <= SearchAndQuickFilterWidget.searchOnlyHeight + _pinHysteresis
+          : exploreRestaurantFilterTop <= SearchAndQuickFilterWidget.searchOnlyHeight);
+    }
 
     // Continuous offset → ValueNotifier (rebuilds only the pinned search widget).
-    // ValueNotifier no-ops when the value is unchanged, so idle frames cost nothing.
     _pinnedTopFilterScrollOutOffset.value = pinnedTopFilterScrollOutOffset;
     if(showBackToTop) {
-      _backToTopTop.value = _resolveBackToTopTop();
+      if (_backToTopTop.value == _backToTopGap || isPinned != _isSearchPinned || isExploreRestaurantFilterPinned != _isExploreRestaurantFilterPinned) {
+        _backToTopTop.value = _resolveBackToTopTop();
+      }
     }
 
     // Booleans flip rarely (once per boundary) — setState is fine and keeps the

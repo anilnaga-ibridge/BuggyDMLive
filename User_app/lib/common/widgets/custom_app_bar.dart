@@ -46,7 +46,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ]),
       centerTitle: false,
-      titleSpacing: 0,
+      titleSpacing: backButton ? 0 : Dimensions.paddingSizeDefault,
       leadingWidth: backButton ? 70 : 0,
       leading: backButton ? Padding(
         padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),

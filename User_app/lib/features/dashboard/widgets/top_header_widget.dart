@@ -41,7 +41,7 @@ class TopHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? moduleType = Get.find<SplashController>().module?.moduleType?.toString();
-    final bool isGrocery = moduleType == AppConstants.grocery && !isParcelModule && title == null;
+    final bool isGrocery = (moduleType == AppConstants.grocery || isHomeModule) && !isParcelModule && title == null;
 
     return GetBuilder<CxpExperienceController>(
       builder: (cxpController) {
@@ -192,30 +192,31 @@ class DashboardAppBar extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              CupertinoIcons.placemark,
-                              size: Dimensions.fontSizeLarge,
-                              color: Theme.of(context).disabledColor,
+                              Icons.location_on_rounded,
+                              size: 16,
+                              color: Theme.of(context).primaryColor,
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 4),
 
                             Flexible(
                               child: Text(
                                 addressText,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: robotoRegular.copyWith(
+                                style: robotoMedium.copyWith(
                                   fontSize: Dimensions.fontSizeSmall,
-                                  color: Theme.of(context).textTheme.bodyLarge!.color!.withValues(alpha: 0.5),
+                                  color: Theme.of(context).textTheme.bodyLarge!.color!.withValues(alpha: 0.75),
                                   height: 130 * 0.01,
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 2),
 
                             Icon(
-                              Icons.keyboard_arrow_down_outlined,
-                              size:  Dimensions.fontSizeLarge,
+                              Icons.keyboard_arrow_down_rounded,
+                              size: Dimensions.fontSizeLarge,
+                              color: Theme.of(context).textTheme.bodyLarge!.color!.withValues(alpha: 0.75),
                             ),
-                            const SizedBox(width: 64,)
                           ],
                         ),
                       ],
@@ -497,30 +498,14 @@ class _ModuleTabsState extends State<ModuleTabs> {
   List<_FoodModuleModuleTabData> _buildTabs(SplashController splashController) {
     final List<_FoodModuleModuleTabData> tabs = [];
 
-    // Home Tab
-    final bool isHomeSelected = splashController.module == null;
-    tabs.add(
-      _FoodModuleModuleTabData(
-        label: 'Home',
-        isSelected: isHomeSelected,
-        onTap: () {
-          if (splashController.module != null) {
-            splashController.removeModule();
-          }
-        },
-        icon: Icons.home_rounded,
-        emoji: '',
-        color: const Color(0xFF3B82F6),
-        moduleType: 'home',
-      ),
-    );
-
     if(splashController.moduleList != null && splashController.moduleList!.isNotEmpty) {
       for(int index = 0; index < splashController.moduleList!.length; index++) {
         final module = splashController.moduleList![index];
         final String moduleType = module.moduleType?.toString() ?? '';
         final int currentTabIndex = index;
-        final bool isSelected = !isHomeSelected && (splashController.module?.id == module.id || splashController.selectedModuleIndex == currentTabIndex);
+        final bool isSelected = (splashController.module?.id == module.id) ||
+            (splashController.module == null && index == 0) ||
+            (splashController.selectedModuleIndex == currentTabIndex);
 
         tabs.add(
           _FoodModuleModuleTabData(
@@ -536,11 +521,11 @@ class _ModuleTabsState extends State<ModuleTabs> {
       }
     }
 
-    if(tabs.length == 1) {
+    if(tabs.isEmpty) {
       tabs.addAll([
         _FoodModuleModuleTabData(
           label: 'Quick Grocery',
-          isSelected: splashController.selectedModuleIndex == 0 && !isHomeSelected,
+          isSelected: splashController.module == null || splashController.selectedModuleIndex == 0,
           onTap: () => splashController.selectModuleIndex(0),
           icon: Icons.local_grocery_store_rounded,
           emoji: '🛒',
@@ -549,7 +534,7 @@ class _ModuleTabsState extends State<ModuleTabs> {
         ),
         _FoodModuleModuleTabData(
           label: 'Quick Food',
-          isSelected: splashController.selectedModuleIndex == 1 && !isHomeSelected,
+          isSelected: splashController.selectedModuleIndex == 1,
           onTap: () => splashController.selectModuleIndex(1),
           icon: Icons.restaurant_rounded,
           emoji: '🍴',
@@ -558,7 +543,7 @@ class _ModuleTabsState extends State<ModuleTabs> {
         ),
         _FoodModuleModuleTabData(
           label: 'Quick Ecom',
-          isSelected: splashController.selectedModuleIndex == 2 && !isHomeSelected,
+          isSelected: splashController.selectedModuleIndex == 2,
           onTap: () => splashController.selectModuleIndex(2),
           icon: Icons.shopping_bag_rounded,
           emoji: '🛍',

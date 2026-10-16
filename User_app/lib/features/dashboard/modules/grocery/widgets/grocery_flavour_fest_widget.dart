@@ -171,10 +171,6 @@ class GroceryFlavourFestController extends GetxController {
     config = GroceryConfigCache.load('flavour_fest') ?? getDefaultConfig();
     _lastConfigJson = jsonEncode(config);
     fetchDynamicConfig();
-    // Periodically sync configuration every 3 seconds so CXP studio changes reflect immediately
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      fetchDynamicConfig();
-    });
   }
 
   @override

@@ -39,11 +39,6 @@ class CxpExperienceController extends GetxController with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     _loadCachedExperience('grocery');
     fetchExperience(page: 'home', module: 'grocery');
-
-    // Periodically poll for CXP experience & theme token updates so changes in Admin reflect live
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      fetchExperience(page: 'home', module: 'grocery');
-    });
   }
 
   @override
@@ -93,6 +88,10 @@ class CxpExperienceController extends GetxController with WidgetsBindingObserver
     try {
       final jsonStr = jsonEncode(exp.toJson());
       await sharedPreferences.setString('$_cacheKeyPrefix$module', jsonStr);
+      if (exp.theme != null) {
+        await sharedPreferences.setString(ThemeController.cachedThemeKey, jsonEncode(exp.theme!.toJson()));
+        await sharedPreferences.setInt(ThemeController.cachedPrimaryColorKey, exp.theme!.primaryColor.toARGB32());
+      }
     } catch (_) {
       // Ignore storage errors
     }
