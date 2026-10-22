@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:sixam_mart/common/widgets/custom_button.dart';
 import 'package:sixam_mart/features/order/domain/models/order_model.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/grocery_stepper_widget.dart';
+import 'package:sixam_mart/helper/route_helper.dart';
 import 'package:sixam_mart/util/dimensions.dart';
 import 'package:sixam_mart/util/images.dart';
 import 'package:sixam_mart/util/styles.dart';
@@ -44,7 +46,7 @@ class Screen3RiderAssigned extends StatelessWidget {
     final List<StepperStepData> steps = [
       StepperStepData(label: 'Confirmed', subtext: formattedConfirmedTime, isCompleted: true),
       StepperStepData(label: 'Preparing', subtext: formattedPreparingTime, isCompleted: true),
-      StepperStepData(label: 'Out for Delivery', subtext: '10:42 AM', isActive: true, isSubtextGreen: true),
+      const StepperStepData(label: 'Out for Delivery', subtext: '10:42 AM', isActive: true, isSubtextGreen: true),
       const StepperStepData(label: 'Delivered', subtext: ''),
     ];
 
@@ -59,7 +61,15 @@ class Screen3RiderAssigned extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F2937), size: 20),
-          onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+          onPressed: onBack ?? () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else if (Get.key.currentState?.canPop() ?? false) {
+              Get.back();
+            } else {
+              Get.offAllNamed(RouteHelper.getInitialRoute());
+            }
+          },
         ),
         title: Column(
           children: [
@@ -252,8 +262,8 @@ class Screen3RiderAssigned extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF3F4F6),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.access_time_rounded, color: Color(0xFF374151), size: 20),

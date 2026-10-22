@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:just_the_tooltip/just_the_tooltip.dart';
@@ -118,14 +118,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           backButton: true,
           circularImage: Center(child: Stack(children: [
 
-            ClipOval(child: profileController.pickedFile != null ? GetPlatform.isWeb ? Image.network(
-              profileController.pickedFile!.path, width: 100, height: 100, fit: BoxFit.cover) : Image.file(
-              File(profileController.pickedFile!.path), width: 100, height: 100, fit: BoxFit.cover) : FadeInImage.assetNetwork(
-                placeholder: Images.placeholder,
-                image: '${profileController.userInfoModel!.imageFullUrl}',
-                height: 100, width: 100, fit: BoxFit.cover,
-                imageErrorBuilder: (c, o, s) => Image.asset(Images.placeholder, height: 100, width: 100, fit: BoxFit.cover),
-            )),
+            ClipOval(child: _buildProfileAvatar(profileController)),
 
             Positioned(
               bottom: 0, right: 0, top: 0, left: 0,
@@ -318,12 +311,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                     alignment: Alignment.topCenter,
                     child: Stack(children: [
 
-                      ClipOval(child: profileController.pickedFile != null ? GetPlatform.isWeb ? Image.network(
-                          profileController.pickedFile!.path, width: 100, height: 100, fit: BoxFit.cover) : Image.file(
-                          File(profileController.pickedFile!.path), width: 100, height: 100, fit: BoxFit.cover) : CustomImage(
-                        image: '${profileController.userInfoModel!.imageFullUrl}',
-                        height: 100, width: 100, fit: BoxFit.cover,
-                      )),
+                      ClipOval(child: _buildProfileAvatar(profileController)),
 
                       Positioned(
                         bottom: 0, right: 0, top: 0, left: 0,
@@ -472,6 +460,42 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     } else {
       UpdateUserModel updatedUser = UpdateUserModel(name: name, email: email, phone: numberWithCountryCode, buttonType: fromButton ? '' : fromPhone ? 'phone' : 'email');
       await profileController.updateUserInfo(updatedUser, Get.find<AuthController>().getUserToken(), fromButton: fromButton);
+    }
+  }
+
+  Widget _buildProfileAvatar(ProfileController profileController) {
+    if (profileController.rawFile != null) {
+      return Image.memory(
+        profileController.rawFile!,
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        errorBuilder: (c, o, s) => Image.asset(Images.placeholder, height: 100, width: 100, fit: BoxFit.cover),
+      );
+    } else if (profileController.pickedFile != null) {
+      return FutureBuilder<Uint8List>(
+        future: profileController.pickedFile!.readAsBytes(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            return Image.memory(
+              snapshot.data!,
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
+              errorBuilder: (c, o, s) => Image.asset(Images.placeholder, height: 100, width: 100, fit: BoxFit.cover),
+            );
+          }
+          return Image.asset(Images.placeholder, height: 100, width: 100, fit: BoxFit.cover);
+        },
+      );
+    } else {
+      return CustomImage(
+        image: '${profileController.userInfoModel?.imageFullUrl}',
+        height: 100,
+        width: 100,
+        fit: BoxFit.cover,
+        placeholder: Images.placeholder,
+      );
     }
   }
 }

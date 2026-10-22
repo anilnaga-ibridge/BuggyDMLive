@@ -97,7 +97,7 @@ class ApiClient extends GetxService {
       http.Response response = await http.get(Uri.parse(appBaseUrl + uri), headers: requestHeaders).timeout(Duration(seconds: timeoutInSeconds));
       // Module switched while this was in flight — drop it so it can't overwrite the
       // shared controllers bound to the now-active module's screen.
-      if (moduleScoped && requestModuleId != _buildHeaders(null)[AppConstants.moduleId]) {
+      if (moduleScoped && requestModuleId != null && _buildHeaders(null)[AppConstants.moduleId] != null && requestModuleId != _buildHeaders(null)[AppConstants.moduleId]) {
         return const Response(statusCode: 499, statusText: 'stale module response');
       }
       return handleResponse(response, uri, handleError);

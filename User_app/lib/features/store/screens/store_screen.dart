@@ -4,8 +4,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
-import 'package:sliver_tools/sliver_tools.dart';
-import 'package:sixam_mart/common/widgets/avg_review_widget.dart';
 import 'package:sixam_mart/common/widgets/back_to_top.dart';
 import 'package:sixam_mart/common/widgets/cart_count_view.dart';
 import 'package:sixam_mart/common/widgets/closed_ribbon_badge.dart';
@@ -14,7 +12,6 @@ import 'package:sixam_mart/common/widgets/custom_button.dart';
 import 'package:sixam_mart/common/widgets/custom_favourite_widget.dart';
 import 'package:sixam_mart/common/widgets/custom_image.dart';
 import 'package:sixam_mart/common/widgets/custom_snackbar.dart';
-import 'package:sixam_mart/common/widgets/food_item_card.dart';
 import 'package:sixam_mart/common/widgets/footer_view.dart';
 import 'package:sixam_mart/common/widgets/menu_drawer.dart';
 import 'package:sixam_mart/common/widgets/not_available_widget.dart';
@@ -57,7 +54,6 @@ import 'package:sixam_mart/helper/responsive_helper.dart';
 import 'package:sixam_mart/helper/route_helper.dart';
 import 'package:sixam_mart/util/app_constants.dart';
 import 'package:sixam_mart/util/dimensions.dart';
-import 'package:sixam_mart/util/gaps.dart';
 import 'package:sixam_mart/util/images.dart';
 import 'package:sixam_mart/util/styles.dart';
 
@@ -92,9 +88,6 @@ class _StoreScreenState extends State<StoreScreen> {
   double _pinnedTopInset = 0;
   double _appBarBottom = 70;
   final GlobalKey _categoryTabsKey = GlobalKey();
-  // Maps a tab index (0 = Most Popular, catIndex+1 = category) to the AutoScroll
-  // index of that section's row in the flat list. Rebuilt when the model changes.
-  final Map<int, int> _tabToRowIndex = {0: 0};
   final TextEditingController _searchController = TextEditingController();
   final Map<int, GlobalKey> categoryKeys = {};
   bool _showBackToTop = false;
@@ -103,9 +96,7 @@ class _StoreScreenState extends State<StoreScreen> {
   // Anchor lives in a ValueNotifier, not a setState field: it flips when the tab
   // bar pins/unpins, which is a different scroll boundary than the pill's own
   // visibility — routing it through setState would rebuild this whole screen
-  // there, and jitter around the boundary would repeat that rebuild.
   final ValueNotifier<double?> _backToTopTop = ValueNotifier(null);
-  bool _userClickedTab = false;
   int? _pendingTabIndex;
   bool _initialCategorySet = false;
 
@@ -198,27 +189,7 @@ class _StoreScreenState extends State<StoreScreen> {
     });
   }
 
-  void _handleTabTap(int index) {
-    _userClickedTab = true;
-    _pendingTabIndex = index;
-    // Jump to the tapped section's flat row index. Every row is tagged with a
-    // uniform index, so scrollToIndex estimates the offset and lands in ~one
-    // jump even for a far, unmounted category — without scanning the list.
-    final int target = _tabToRowIndex[index] ?? 0;
-    scrollController.scrollToIndex(
-      target,
-      preferPosition: AutoScrollPosition.begin,
-      duration: const Duration(milliseconds: 400),
-    );
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      Get.find<StoreController>().setCategoryScrollIndex(index);
-      _userClickedTab = false;
-    });
-  }
-
   void _updateCategoryScrollIndex() {
-    if (_userClickedTab) return; // Don't override while user is clicking tabs
 
     final storeController = Get.find<StoreController>();
 
@@ -294,99 +265,12 @@ class _StoreScreenState extends State<StoreScreen> {
     return anchorBottom + _backToTopGap;
   }
 
-  GlobalKey _getSectionKey(int index) {
-    if (!categoryKeys.containsKey(index)) {
-      categoryKeys[index] = GlobalKey();
-    }
-    return categoryKeys[index]!;
-  }
-
-  // Mobile items: a Most-Popular tag sliver + one flat SliverList.builder of
-  // interleaved header/item rows. The flat list virtualizes uniformly (only the
-  // viewport + cache extent is built), so a store with thousands of items — even
-  // all in one category — never eager-builds every card.
   Widget _buildMobileItemsSliver(Store store, StoreController storeController) {
-    final StoreCategoryItemModel? model = storeController.storeCategoryItemsModel;
-    if (model == null) {
-      return const SliverToBoxAdapter(child: _StoreItemsLoadingList());
-    }
-
-    final List<StoreItemCategory> cats = model.categories ?? [];
-    final Map<String, List<StoreCardItem>> itemMap = model.categoryWiseItems ?? {};
-
-    // Build the flat rows and the tab→row-index map. AutoScroll indices:
-    // 0 = Most Popular sliver; each flat row at position p = index p + 1.
-    final List<_StoreRow> rows = [];
-    _tabToRowIndex..clear()..[0] = 0;
-    for (int ci = 0; ci < cats.length; ci++) {
-      final List<StoreCardItem> items = itemMap[cats[ci].id.toString()] ?? [];
-      if (items.isEmpty) continue;
-      _tabToRowIndex[ci + 1] = rows.length + 1; // header row's AutoScroll index
-      rows.add(_HeaderRow(catIndex: ci, name: cats[ci].name ?? ''));
-      for (int ii = 0; ii < items.length; ii++) {
-        rows.add(_ItemRow(item: items[ii], indexInCat: ii, isFirst: ii == 0));
-      }
-    }
-
-    final bool hasMostPopular = !storeController.isSearching &&
-        (storeController.recommendedItemModel?.items?.isNotEmpty ?? false);
-    if (rows.isEmpty && !hasMostPopular) {
-      return SliverFillRemaining(hasScrollBody: false,
-        child: Container(height: 300, alignment: Alignment.center, child: Text('no_item_available'.tr)),
-      );
-    }
-
-    return MultiSliver(children: [
-      // Tag index 0 = Most Popular (renders SizedBox.shrink when empty).
-      SliverToBoxAdapter(
-        child: AutoScrollTag(
-          key: const ValueKey('sec_0'),
-          controller: scrollController,
-          index: 0,
-          child: _MostPopularItemsSection(store: store, storeController: storeController),
-        ),
-      ),
-      SliverList.builder(
-        itemCount: rows.length,
-        itemBuilder: (context, i) => _buildStoreRow(context, rows[i], store, i + 1),
-      ),
-    ]);
-  }
-
-  // Every row is tagged with its uniform AutoScroll index so scrollToIndex can
-  // estimate a far target's offset and jump straight there. Category headers
-  // additionally carry a GlobalKey that feeds the scroll-position auto-highlight.
-  Widget _buildStoreRow(BuildContext context, _StoreRow row, Store store, int autoIndex) {
-    if (row is _HeaderRow) {
-      return AutoScrollTag(
-        key: ValueKey('row_$autoIndex'),
-        controller: scrollController,
-        index: autoIndex,
-        child: Container(
-          key: _getSectionKey(row.catIndex),
-          margin: const EdgeInsets.only(top: 4),
-          color: Theme.of(context).cardColor,
-          padding: const EdgeInsets.fromLTRB(Dimensions.paddingSizeDefault, 28, Dimensions.paddingSizeDefault, 6),
-          child: Text(row.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge),
-          ),
-        ),
-      );
-    }
-    final _ItemRow itemRow = row as _ItemRow;
-    return AutoScrollTag(
-      key: ValueKey('row_$autoIndex'),
-      controller: scrollController,
-      index: autoIndex,
-      child: Container(
-        color: Theme.of(context).cardColor,
-        child: Column(children: [
-          if (!itemRow.isFirst) Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
-            child: Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
-          ),
-          _StoreCompactItemCard(data: itemRow.item, store: store, index: itemRow.indexInCat),
-        ]),
+    return SliverFillRemaining(
+      hasScrollBody: true,
+      child: _StoreVerticalCategorySplitView(
+        store: store,
+        storeController: storeController,
       ),
     );
   }
@@ -411,8 +295,14 @@ class _StoreScreenState extends State<StoreScreen> {
     if (widget.fromDeeplink) {
       Get.find<SplashController>().setDeeplink(null);
       Get.offAllNamed(RouteHelper.getInitialRoute());
-    } else {
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else if (Get.key.currentState?.canPop() ?? false) {
       Get.back();
+    } else if (Get.previousRoute.isNotEmpty && Get.previousRoute != Get.currentRoute && Get.previousRoute != '/') {
+      Get.back();
+    } else {
+      Get.offAllNamed(RouteHelper.getInitialRoute());
     }
   }
 
@@ -922,14 +812,8 @@ class _StoreScreenState extends State<StoreScreen> {
                         ),
                       ])),
 
-                      ResponsiveHelper.isDesktop(context) ? const SliverToBoxAdapter(child: SizedBox()) : (storeController.categoryList!.isNotEmpty)
-                        ? SliverPersistentHeader(pinned: true,
-                            delegate: SliverDelegate(height: 40,
-                              child: _StoreCategoryTabs(key: _categoryTabsKey, storeController: storeController, onTabTap: _handleTabTap),
-                            ),
-                          ) : const SliverToBoxAdapter(child: SizedBox()),
-
-                      ResponsiveHelper.isDesktop(context) ? const SliverToBoxAdapter(child: SizedBox())
+                      ResponsiveHelper.isDesktop(context)
+                          ? const SliverToBoxAdapter(child: SizedBox())
                           : _buildMobileItemsSliver(store!, storeController),
                     ]) : const StoreScreenShimmerWidget();
               },
@@ -1064,8 +948,7 @@ class _MobileStoreOverview extends StatelessWidget {
                       Icon(Icons.location_on_outlined, color: Theme.of(context).colorScheme.tertiary, size: 14),
                       Text(store.address ?? '', maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).colorScheme.tertiary,
-                        decoration: TextDecoration.underline, decorationColor: Theme.of(context).colorScheme.tertiary),
+                        style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).colorScheme.tertiary),
                       ),
                     ]),
                   ),
@@ -1145,7 +1028,7 @@ class _StoreStatDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: 1, height: 42, color: const Color(0xFFE2E2E2));
+    return const SizedBox(width: 4);
   }
 }
 
@@ -1581,277 +1464,699 @@ class _CouponCodeBox extends StatelessWidget {
   }
 }
 
-class _StoreCategoryTabs extends StatefulWidget {
-  final StoreController storeController;
-  final void Function(int index) onTabTap;
-
-  const _StoreCategoryTabs({super.key, required this.storeController, required this.onTabTap});
-
-  @override
-  State<_StoreCategoryTabs> createState() => _StoreCategoryTabsState();
-}
-
-class _StoreCategoryTabsState extends State<_StoreCategoryTabs> {
-  final ScrollController _tabScrollController = ScrollController();
-  final Map<int, GlobalKey> _tabKeys = {};
-  final GlobalKey _containerKey = GlobalKey();
-  int _lastActiveIndex = -1;
-
-  GlobalKey _getTabKey(int index) => _tabKeys.putIfAbsent(index, () => GlobalKey());
-
-  @override
-  void dispose() {
-    _tabScrollController.dispose();
-    super.dispose();
-  }
-
-  // Drive the horizontal tab list directly — do NOT use Scrollable.ensureVisible
-  // because it walks ALL ancestor scrollables and would also scroll the outer
-  // CustomScrollView back to offset 0 (the pinned header's content position).
-  void _scrollToActiveTab(int index) {
-    if (!_tabScrollController.hasClients) return;
-    final key = _tabKeys[index];
-    if (key?.currentContext == null) return;
-
-    final RenderBox? tabBox = key!.currentContext!.findRenderObject() as RenderBox?;
-    final RenderBox? containerBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
-    if (tabBox == null || containerBox == null || !tabBox.attached || !containerBox.attached) return;
-
-    final double tabScreenLeft = tabBox.localToGlobal(Offset.zero).dx;
-    final double containerScreenLeft = containerBox.localToGlobal(Offset.zero).dx;
-    final double tabWidth = tabBox.size.width;
-    final double currentOffset = _tabScrollController.offset;
-    final double viewportWidth = _tabScrollController.position.viewportDimension;
-
-    // Tab's left edge in content space = scrolled amount + its screen offset from the container.
-    final double tabContentLeft = currentOffset + (tabScreenLeft - containerScreenLeft);
-    // Center the tab in the viewport.
-    final double targetOffset = (tabContentLeft + tabWidth / 2 - viewportWidth / 2)
-        .clamp(0.0, _tabScrollController.position.maxScrollExtent);
-
-    _tabScrollController.animateTo(targetOffset,
-        duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final StoreController storeController = widget.storeController;
-    final bool hasMostPopular = storeController.recommendedItemModel?.items?.isNotEmpty == true;
-    final List<StoreItemCategory> cats = storeController.storeCategoryItemsModel?.categories ?? [];
-    final int tabCount = hasMostPopular ? cats.length + 1 : cats.length;
-    final int activeIndex = storeController.categoryScrollIndex;
-
-    // Only schedule a scroll when the active index actually changes.
-    if (_lastActiveIndex != activeIndex) {
-      _lastActiveIndex = activeIndex;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _scrollToActiveTab(activeIndex);
-      });
-    }
-
-    return Center(
-      child: Container(
-        key: _containerKey,
-        width: Dimensions.webMaxWidth,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 8, offset: Offset(0, 2))],
-        ),
-        child: tabCount == 0 ? const SizedBox() : ListView.builder(
-          controller: _tabScrollController,
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          itemCount: tabCount,
-          padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
-          itemBuilder: (context, i) {
-            final int index = hasMostPopular ? i : i + 1;
-            final bool selected = index == activeIndex;
-            final String label = index == 0 ? 'most_popular'.tr : (cats[index - 1].name ?? '');
-            return InkWell(
-              key: _getTabKey(index),
-              onTap: () => widget.onTabTap(index),
-              child: Container(height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(width: 3,
-                  color: selected ? Theme.of(context).primaryColor : Colors.transparent))),
-                child: Text('  $label  ', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: (selected ? robotoBold : robotoBold).copyWith(fontSize: Dimensions.fontSizeDefault,
-                    color: selected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyLarge!.color!.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-class _MostPopularItemsSection extends StatelessWidget {
+class _StoreVerticalCategorySplitView extends StatefulWidget {
   final Store store;
   final StoreController storeController;
 
-  const _MostPopularItemsSection({required this.store, required this.storeController});
+  const _StoreVerticalCategorySplitView({
+    required this.store,
+    required this.storeController,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final List<Item>? items = storeController.recommendedItemModel?.items;
-    if (storeController.isSearching || items == null || items.isEmpty) {
-      return const SizedBox.shrink();
+  State<_StoreVerticalCategorySplitView> createState() => _StoreVerticalCategorySplitViewState();
+}
+
+class _StoreVerticalCategorySplitViewState extends State<_StoreVerticalCategorySplitView> {
+  int _selectedCategoryIndex = 0;
+  final ScrollController _railScrollController = ScrollController();
+  final ScrollController _itemsScrollController = ScrollController();
+  final Map<int, List<Item>> _categoryItemsMap = {};
+  final Set<int> _loadingCategoryIds = {};
+  final Set<int> _paginatingCategoryIds = {};
+  final Map<int, int> _categoryOffsets = {};
+  final Map<int, bool> _categoryHasMore = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _initCategories();
+    _itemsScrollController.addListener(_onItemsScroll);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StoreVerticalCategorySplitView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.storeController.storeCategoryItemsModel != widget.storeController.storeCategoryItemsModel) {
+      _initCategories();
+    }
+  }
+
+  @override
+  void dispose() {
+    _itemsScrollController.removeListener(_onItemsScroll);
+    _railScrollController.dispose();
+    _itemsScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onItemsScroll() {
+    if (!_itemsScrollController.hasClients) return;
+    if (_itemsScrollController.position.pixels >= _itemsScrollController.position.maxScrollExtent - 250) {
+      _loadMoreItems();
+    }
+  }
+
+  void _initCategories() {
+    final model = widget.storeController.storeCategoryItemsModel;
+    if (model == null) return;
+
+    if (model.categoryWiseItems != null) {
+      model.categoryWiseItems!.forEach((key, cardItems) {
+        final catId = int.tryParse(key);
+        if (catId != null && cardItems.isNotEmpty) {
+          _categoryItemsMap[catId] = cardItems.map((e) => e.toItem()).toList();
+          _categoryOffsets[catId] = 1;
+          _categoryHasMore[catId] = cardItems.length >= 13;
+        }
+      });
     }
 
-    return Container(width: double.infinity, color: Theme.of(context).cardColor,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 26),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
-            child: Text('most_popular'.tr,
-              style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge),
-            ),
-          ),
-          const SizedBox(height: 14),
-          GetBuilder<FavouriteController>(
-            builder: (favouriteController) {
-              return SizedBox(
-                height: 310,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  primary: false,
-                  padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
-                  itemCount: items.length,
-                  separatorBuilder: (BuildContext context, int index) => Gaps.horizontalGapOf(Dimensions.paddingSizeSmall),
-                  itemBuilder: (BuildContext context, int index) => FoodItemCard(data: items[index], width: 158, index: index),
+    final cats = _getCategories();
+    if (cats.isNotEmpty) {
+      if (_selectedCategoryIndex >= cats.length) {
+        _selectedCategoryIndex = 0;
+      }
+      final cat = cats[_selectedCategoryIndex];
+      if (cat.id != null && (!_categoryItemsMap.containsKey(cat.id) || _categoryItemsMap[cat.id]!.isEmpty)) {
+        _fetchCategoryItems(cat.id!, offset: 1);
+      }
+    }
+  }
+
+  List<StoreItemCategory> _getCategories() {
+    final model = widget.storeController.storeCategoryItemsModel;
+    if (model?.categories != null && model!.categories!.isNotEmpty) {
+      return model.categories!;
+    }
+    return (widget.storeController.categoryList ?? [])
+        .where((c) => c.id != 0)
+        .map((c) => StoreItemCategory(id: c.id, name: c.name, imageFullUrl: c.imageFullUrl))
+        .toList();
+  }
+
+  Future<void> _fetchCategoryItems(int categoryId, {int offset = 1}) async {
+    if (_loadingCategoryIds.contains(categoryId)) return;
+    setState(() => _loadingCategoryIds.add(categoryId));
+
+    try {
+      final ItemModel? itemModel = await widget.storeController.storeServiceInterface.getStoreItemList(
+        storeID: widget.store.id,
+        offset: offset,
+        categoryID: categoryId,
+        type: 'all',
+      );
+      if (itemModel?.items != null) {
+        _categoryItemsMap[categoryId] = itemModel!.items!;
+        _categoryOffsets[categoryId] = offset;
+        _categoryHasMore[categoryId] = itemModel.items!.length >= 13;
+      } else {
+        _categoryItemsMap[categoryId] ??= [];
+        _categoryHasMore[categoryId] = false;
+      }
+    } catch (e) {
+      debugPrint('Error fetching category items: $e');
+      _categoryItemsMap[categoryId] ??= [];
+      _categoryHasMore[categoryId] = false;
+    } finally {
+      if (mounted) {
+        setState(() => _loadingCategoryIds.remove(categoryId));
+      }
+    }
+  }
+
+  Future<void> _loadMoreItems() async {
+    final cats = _getCategories();
+    if (_selectedCategoryIndex >= cats.length) return;
+    final catId = cats[_selectedCategoryIndex].id;
+    if (catId == null) return;
+
+    if (_paginatingCategoryIds.contains(catId) || _loadingCategoryIds.contains(catId)) return;
+    if (_categoryHasMore[catId] == false) return;
+
+    final currentOffset = _categoryOffsets[catId] ?? 1;
+    final nextOffset = currentOffset + 1;
+    setState(() => _paginatingCategoryIds.add(catId));
+
+    try {
+      final ItemModel? itemModel = await widget.storeController.storeServiceInterface.getStoreItemList(
+        storeID: widget.store.id,
+        offset: nextOffset,
+        categoryID: catId,
+        type: 'all',
+      );
+      if (itemModel?.items != null && itemModel!.items!.isNotEmpty) {
+        _categoryOffsets[catId] = nextOffset;
+        _categoryItemsMap[catId] ??= [];
+        _categoryItemsMap[catId]!.addAll(itemModel.items!);
+        _categoryHasMore[catId] = itemModel.items!.length >= 13;
+      } else {
+        _categoryHasMore[catId] = false;
+      }
+    } catch (e) {
+      debugPrint('Error loading more category items: $e');
+      _categoryHasMore[catId] = false;
+    } finally {
+      if (mounted) {
+        setState(() => _paginatingCategoryIds.remove(catId));
+      }
+    }
+  }
+
+  void _onCategoryTapped(int index) {
+    if (_selectedCategoryIndex == index) return;
+    setState(() {
+      _selectedCategoryIndex = index;
+    });
+
+    if (_itemsScrollController.hasClients) {
+      _itemsScrollController.jumpTo(0);
+    }
+
+    final cats = _getCategories();
+    if (index < cats.length) {
+      final cat = cats[index];
+      if (cat.id != null && (!_categoryItemsMap.containsKey(cat.id) || _categoryItemsMap[cat.id]!.isEmpty)) {
+        _fetchCategoryItems(cat.id!, offset: 1);
+      }
+    }
+
+    if (_railScrollController.hasClients) {
+      final double target = (index * 84.0) - 150;
+      _railScrollController.animateTo(
+        target.clamp(0.0, _railScrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  String? _getCategoryImageUrl(StoreItemCategory cat) {
+    if (cat.imageFullUrl != null && cat.imageFullUrl!.isNotEmpty) {
+      return cat.imageFullUrl;
+    }
+    if (Get.isRegistered<CategoryController>()) {
+      final catController = Get.find<CategoryController>();
+      if (catController.categoryList != null) {
+        for (final item in catController.categoryList!) {
+          if (item.id == cat.id && item.imageFullUrl != null && item.imageFullUrl!.isNotEmpty) {
+            return item.imageFullUrl;
+          }
+        }
+        final String catNameLower = cat.name?.trim().toLowerCase() ?? '';
+        for (final item in catController.categoryList!) {
+          if (item.name?.trim().toLowerCase() == catNameLower && item.imageFullUrl != null && item.imageFullUrl!.isNotEmpty) {
+            return item.imageFullUrl;
+          }
+        }
+      }
+      if (catController.subCategoryList != null) {
+        for (final item in catController.subCategoryList!) {
+          if (item.id == cat.id && item.imageFullUrl != null && item.imageFullUrl!.isNotEmpty) {
+            return item.imageFullUrl;
+          }
+        }
+        final String catNameLower = cat.name?.trim().toLowerCase() ?? '';
+        for (final item in catController.subCategoryList!) {
+          if (item.name?.trim().toLowerCase() == catNameLower && item.imageFullUrl != null && item.imageFullUrl!.isNotEmpty) {
+            return item.imageFullUrl;
+          }
+        }
+      }
+    }
+    final items = widget.storeController.storeCategoryItemsModel?.categoryWiseItems?[cat.id.toString()];
+    if (items != null && items.isNotEmpty && items.first.imageFullUrl?.isNotEmpty == true) {
+      return items.first.imageFullUrl;
+    }
+    return null;
+  }
+
+  Widget _buildLeftRail(BuildContext context, List<StoreItemCategory> cats) {
+    return Container(
+      width: 82,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF6F7F9),
+      ),
+      child: GetBuilder<CategoryController>(
+        builder: (_) {
+          return ListView.builder(
+            controller: _railScrollController,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(top: 6, bottom: 80),
+            itemCount: cats.length,
+            itemBuilder: (context, index) {
+              final cat = cats[index];
+              final bool isSelected = index == _selectedCategoryIndex;
+              final String? imgUrl = _getCategoryImageUrl(cat);
+
+              return InkWell(
+                onTap: () => _onCategoryTapped(index),
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFE8F2FE)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 48,
+                        width: 48,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(2),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CustomImage(
+                            image: imgUrl ?? '',
+                            fit: BoxFit.contain,
+                            placeholder: Images.placeholder,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Text(
+                          cat.name ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: robotoMedium.copyWith(
+                            fontSize: 10,
+                            height: 1.15,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? Theme.of(context).primaryColor
+                                : Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRightPane(BuildContext context, StoreItemCategory currentCat) {
+    final int catId = currentCat.id ?? 0;
+    final bool isLoading = _loadingCategoryIds.contains(catId) && !_categoryItemsMap.containsKey(catId);
+    final List<Item> items = _categoryItemsMap[catId] ?? [];
+    final bool isPaginating = _paginatingCategoryIds.contains(catId);
+
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    currentCat.name ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: robotoBold.copyWith(fontSize: 13.5, color: Theme.of(context).textTheme.bodyLarge?.color),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${currentCat.itemsCount ?? items.length} ${items.length == 1 ? 'item' : 'items'}',
+                    style: robotoMedium.copyWith(fontSize: 10, color: Theme.of(context).primaryColor),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: isLoading
+                ? _buildShimmerGrid()
+                : (items.isEmpty)
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.inventory_2_outlined, size: 44, color: Theme.of(context).disabledColor.withValues(alpha: 0.6)),
+                            const SizedBox(height: 8),
+                            Text('no_item_available'.tr, style: robotoMedium.copyWith(color: Theme.of(context).disabledColor)),
+                          ],
+                        ),
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final int crossAxisCount = (constraints.maxWidth / 140).floor().clamp(2, 4);
+                          return GridView.builder(
+                            controller: _itemsScrollController,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 90),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              childAspectRatio: 0.54,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                            ),
+                            itemCount: items.length + (isPaginating ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == items.length) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                                  ),
+                                );
+                              }
+                              return _StoreGridProductCard(
+                                item: items[index],
+                                store: widget.store,
+                                index: index,
+                              );
+                            },
+                          );
+                        },
+                      ),
           ),
         ],
       ),
     );
   }
-}
 
-// A row in the flat store item list: either a category header or a single item.
-sealed class _StoreRow {
-  const _StoreRow();
-}
-
-class _HeaderRow extends _StoreRow {
-  final int catIndex;
-  final String name;
-  const _HeaderRow({required this.catIndex, required this.name});
-}
-
-class _ItemRow extends _StoreRow {
-  final StoreCardItem item;
-  final int indexInCat;
-  final bool isFirst;
-  const _ItemRow({required this.item, required this.indexInCat, required this.isFirst});
-}
-
-class _StoreCompactItemCard extends StatelessWidget {
-  final StoreCardItem data;
-  final Store store;
-  final int index;
-
-  const _StoreCompactItemCard({required this.data, required this.store, required this.index});
+  Widget _buildShimmerGrid() {
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 90),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.54,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE9E9E9),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Container(height: 10, width: 50, decoration: BoxDecoration(color: const Color(0xFFE9E9E9), borderRadius: BorderRadius.circular(4))),
+                      Container(height: 12, width: 70, decoration: BoxDecoration(color: const Color(0xFFE9E9E9), borderRadius: BorderRadius.circular(4))),
+                      Container(height: 11, width: double.infinity, decoration: BoxDecoration(color: const Color(0xFFE9E9E9), borderRadius: BorderRadius.circular(4))),
+                      Container(height: 11, width: 90, decoration: BoxDecoration(color: const Color(0xFFE9E9E9), borderRadius: BorderRadius.circular(4))),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Bridge the slim card model to a minimal Item for the shared card widgets
-    // (CartCountView, CustomFavouriteWidget) and item navigation — each re-fetches
-    // full details by id, so the minimal Item is sufficient.
-    final Item item = data.toItem();
+    final model = widget.storeController.storeCategoryItemsModel;
+    if (model == null) {
+      return const _StoreItemsLoadingList();
+    }
+
+    final cats = _getCategories();
+    if (cats.isEmpty) {
+      return Container(
+        height: 300,
+        alignment: Alignment.center,
+        child: Text('no_item_available'.tr),
+      );
+    }
+
+    final safeIndex = _selectedCategoryIndex.clamp(0, cats.length - 1);
+    final currentCat = cats[safeIndex];
+
+    return Row(
+      children: [
+        _buildLeftRail(context, cats),
+        Expanded(child: _buildRightPane(context, currentCat)),
+      ],
+    );
+  }
+}
+
+class _StoreGridProductCard extends StatelessWidget {
+  final Item item;
+  final Store store;
+  final int index;
+
+  const _StoreGridProductCard({
+    required this.item,
+    required this.store,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final double discount = item.discount ?? 0;
     final bool hasDiscount = discount > 0;
-    final bool hasFreeDelivery = store.delivery == true && store.freeDelivery == true;
     final bool isAvailable = DateConverter.isAvailable(item.availableTimeStarts, item.availableTimeEnds);
+    final String unitText = _extractUnit(item);
 
     return InkWell(
-      onTap: () => Get.find<ItemController>().navigateToItemPage(item, context, inStore: true, isCampaign: false, ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault, vertical: Dimensions.paddingSizeDefault),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: Dimensions.paddingSizeDefault),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  item.name ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault),
-                ),
-                const SizedBox(height: 7),
-                AvgReviewWidget(avgRating: item.avgRating ?? 0, ratingCount: item.ratingCount ?? 0),
-                if (AvgReviewWidget.showRating(item.avgRating ?? 0)) const SizedBox(height: 9),
-                Row(children: [
-                  Text(
-                    PriceConverter.convertPrice(item.price, discount: item.discount, discountType: item.discountType),
-                    textDirection: TextDirection.ltr,
-                    style: robotoBold.copyWith(fontSize: Dimensions.fontSizeDefault),
+      onTap: () => Get.find<ItemController>().navigateToItemPage(item, context, inStore: true, isCampaign: false),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Image Area
+            Expanded(
+              flex: 5,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: CustomImage(
+                      image: item.imageFullUrl ?? '',
+                      fit: BoxFit.contain,
+                      placeholder: Images.placeholder,
+                    ),
                   ),
-                  if (hasDiscount) ...[
-                    const SizedBox(width: 6),
-                    Flexible(child: Text(
-                      PriceConverter.convertPrice(item.price),
-                      textDirection: TextDirection.ltr,
-                      maxLines: 1,
+
+                  if (hasDiscount)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.discountType == 'percent'
+                              ? '${discount.toStringAsFixed(discount % 1 == 0 ? 0 : 1)}% OFF'
+                              : '-${PriceConverter.convertPrice(discount)}',
+                          style: robotoBold.copyWith(color: Colors.white, fontSize: 9),
+                        ),
+                      ),
+                    ),
+
+                  Positioned(
+                    bottom: 6,
+                    left: 6,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (item.isStoreHalalActive == true && item.isHalalItem == true)
+                          const CustomAssetImageWidget(Images.halalTag, height: 14, width: 14),
+                        if (item.isStoreHalalActive == true && item.isHalalItem == true && item.veg == 1)
+                          const SizedBox(width: 3),
+                        if (item.veg == 1)
+                          Image.asset(Images.vegTag, height: 14, width: 14),
+                      ],
+                    ),
+                  ),
+
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GetBuilder<FavouriteController>(
+                      builder: (favouriteController) {
+                        final bool isWished = favouriteController.wishItemIdList.contains(item.id);
+                        return CustomFavouriteWidget(
+                          item: item,
+                          isWished: isWished,
+                          size: 18,
+                        );
+                      },
+                    ),
+                  ),
+
+                  if (!isAvailable)
+                    const Positioned.fill(
+                      child: NotAvailableWidget(isStore: false, radius: 12),
+                    ),
+                ],
+              ),
+            ),
+
+            // Product Details Area
+            Expanded(
+              flex: 5,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (unitText.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F4F7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          unitText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: robotoMedium.copyWith(fontSize: 10, color: const Color(0xFF475467)),
+                        ),
+                      )
+                    else
+                      const SizedBox(height: 14),
+
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      children: [
+                        Text(
+                          PriceConverter.convertPrice(item.price, discount: item.discount, discountType: item.discountType),
+                          textDirection: TextDirection.ltr,
+                          style: robotoBold.copyWith(fontSize: 12.5, color: Theme.of(context).textTheme.bodyLarge?.color),
+                        ),
+                        if (hasDiscount)
+                          Text(
+                            PriceConverter.convertPrice(item.price),
+                            textDirection: TextDirection.ltr,
+                            style: robotoRegular.copyWith(
+                              fontSize: 10,
+                              color: Theme.of(context).disabledColor,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    Text(
+                      item.name ?? '',
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).disabledColor, decoration: TextDecoration.lineThrough),
-                    )),
+                      style: robotoRegular.copyWith(fontSize: 11, height: 1.2),
+                    ),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: isAvailable
+                          ? CartCountView(
+                              item: item,
+                              index: index,
+                              child: Container(
+                                height: 30,
+                                width: 30,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.10),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(Icons.add, size: 20, color: Theme.of(context).primaryColor),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
-                ]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 7, runSpacing: 7, children: [
-                  if (hasDiscount)_SmallDealBadge(text: _discountBadgeText(item), textDirection: TextDirection.ltr),
-                  if (hasFreeDelivery) _SmallDealBadge(text: 'free'.tr, icon: Icons.pedal_bike_outlined, soft: true),
-                ]),
-              ]),
+                ),
+              ),
             ),
-          ),
-          SizedBox(width: 132, height: 132,
-            child: ClipRRect(borderRadius: BorderRadius.circular(12),
-              child: Stack(children: [
-                Positioned.fill(
-                  child: CustomImage(image: item.imageFullUrl ?? '', fit: BoxFit.cover, placeholder: Images.placeholder),
-                ),
-                Positioned(top: 8, left: 8,
-                  child: Row(children: [
-                    if (item.isStoreHalalActive == true && item.isHalalItem == true)
-                      const _ImageRoundBadge(assetPath: Images.halalTag),
-
-                    if (item.isStoreHalalActive == true && item.isHalalItem == true && item.veg == 1) const SizedBox(width: 5),
-                    if (item.veg == 1)const _ImageRoundBadge(assetPath: Images.vegTag),
-                  ]),
-                ),
-                Positioned(top: 8, right: 8,
-                  child: GetBuilder<FavouriteController>(
-                    builder: (favouriteController) {
-                      final bool isWished = favouriteController.wishItemIdList.contains(item.id);
-                      return _CardCircleButton(
-                        size: 28,
-                        child: CustomFavouriteWidget(item: item, isWished: isWished, size: 21),
-                      );
-                    },
-                  ),
-                ),
-                if(isAvailable) Positioned(right: 7, bottom: 7,
-                  child: CartCountView(item: item, index: index, child: const _AddSquareButton(size: 36)),
-                ),
-
-                if (!isAvailable) const NotAvailableWidget(isStore: false, radius: 12),
-              ]),
-            ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
 
-  String _discountBadgeText(Item item) {
-    final double discount = item.discount ?? 0;
-    if (item.discountType == 'percent') {return '-${discount.toStringAsFixed(discount % 1 == 0 ? 0 : 1)}%';}
-    return '-${PriceConverter.convertPrice(discount)}';
+  String _extractUnit(Item item) {
+    if (item.unitType != null && item.unitType!.isNotEmpty) {
+      return item.unitType!;
+    }
+    final name = item.name ?? '';
+    final match = RegExp(r'(\d+(?:\.\d+)?\s*(?:kg|g|gm|ml|l|ltr|litre|pack|pieces|pcs))\b', caseSensitive: false).firstMatch(name);
+    if (match != null) {
+      return match.group(1)!;
+    }
+    return '';
   }
 }
 
@@ -1993,97 +2298,6 @@ class _VerifiedChip extends StatelessWidget {
   }
 }
 
-class _CardCircleButton extends StatelessWidget {
-  final Widget child;
-  final double size;
-
-  const _CardCircleButton({required this.child, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size, height: size,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.only(top: 3),
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2))],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _AddSquareButton extends StatelessWidget {
-  final double size;
-
-  const _AddSquareButton({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: size, height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Color(0x26000000), blurRadius: 10, offset: Offset(0, 3))],
-      ),
-      child: const Icon(Icons.add, size: 24, color: Color(0xFF111111)),
-    );
-  }
-}
-
-class _SmallDealBadge extends StatelessWidget {
-  final String text;
-  final IconData? icon;
-  final bool soft;
-  final TextDirection? textDirection;
-
-  const _SmallDealBadge({required this.text, this.icon, this.soft = false, this.textDirection});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: soft ? const Color(0xFFFFE8E8) : const Color(0xFFFF2020),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 13, color: const Color(0xFFFF2020)),
-            const SizedBox(width: 3),
-          ],
-          Text(
-            text,
-            textDirection: textDirection,
-            style: robotoMedium.copyWith(
-              fontSize: Dimensions.fontSizeExtraSmall,
-              color: soft ? const Color(0xFFFF2020) : Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ImageRoundBadge extends StatelessWidget {
-  final String assetPath;
-
-  const _ImageRoundBadge({required this.assetPath});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 26, width: 26,
-      padding: const EdgeInsets.all(3),
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: CustomAssetImageWidget(assetPath),
-    );
-  }
-}
 
 class SliverDelegate extends SliverPersistentHeaderDelegate {
   Widget child;

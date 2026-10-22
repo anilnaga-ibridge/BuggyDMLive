@@ -122,9 +122,24 @@ class FoodModuleExploreRestaurantsFilterWidget extends StatelessWidget {
   }
 }
 
-class FoodModuleExploreRestaurantsListWidget extends StatelessWidget {
+class FoodModuleExploreRestaurantsListWidget extends StatefulWidget {
   final ScrollController scrollController;
   const FoodModuleExploreRestaurantsListWidget({super.key, required this.scrollController});
+
+  @override
+  State<FoodModuleExploreRestaurantsListWidget> createState() => _FoodModuleExploreRestaurantsListWidgetState();
+}
+
+class _FoodModuleExploreRestaurantsListWidgetState extends State<FoodModuleExploreRestaurantsListWidget> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Get.isRegistered<StoreController>() && Get.find<StoreController>().storeModel == null) {
+        Get.find<StoreController>().getStoreList(1, false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +165,7 @@ class FoodModuleExploreRestaurantsListWidget extends StatelessWidget {
       }
 
       return PaginatedListView(
-        scrollController: scrollController,
+        scrollController: widget.scrollController,
         totalSize: storeController.storeModel?.totalSize,
         offset: storeController.storeModel?.offset,
         onPaginate: (int? offset) async => await storeController.getStoreList(offset!, false),

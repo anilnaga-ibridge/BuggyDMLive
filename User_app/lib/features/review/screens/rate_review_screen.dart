@@ -392,7 +392,10 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         const Text(
                           'Review & Earn Lounge',
@@ -403,7 +406,6 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                             letterSpacing: -0.2,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -448,11 +450,11 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildHeroStat('EARNED CASH', '₹$_earnedCashback', const Color(0xFF10B981)),
+                Expanded(child: _buildHeroStat('EARNED CASH', '₹$_earnedCashback', const Color(0xFF10B981))),
                 Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.12)),
-                _buildHeroStat('MAX EARNABLE', '₹250', const Color(0xFFF59E0B)),
+                Expanded(child: _buildHeroStat('MAX EARNABLE', '₹250', const Color(0xFFF59E0B))),
                 Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.12)),
-                _buildHeroStat('REVIEWER TIER', 'Level 2 VIP', const Color(0xFF38BDF8)),
+                Expanded(child: _buildHeroStat('REVIEWER TIER', 'Level 2 VIP', const Color(0xFF38BDF8))),
               ],
             ),
           ),
@@ -466,6 +468,9 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
       children: [
         Text(
           title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.55),
             fontSize: 10,
@@ -476,6 +481,9 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
         const SizedBox(height: 3),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: color,
             fontSize: 15,
@@ -721,27 +729,34 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${item.storeName} • Order #${item.orderId}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF64748B),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${item.storeName} • Order #${item.orderId}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -750,6 +765,7 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                   border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.monetization_on_rounded, size: 12, color: Color(0xFFD97706)),
                     const SizedBox(width: 4),
@@ -795,6 +811,8 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                   children: [
                     Text(
                       item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -953,7 +971,11 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
           const SizedBox(height: 12),
 
           // Photo Upload trigger & Submission Button
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               InkWell(
                 onTap: () {
@@ -972,6 +994,7 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                     ),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         item.hasPhoto ? Icons.photo_library_rounded : Icons.add_a_photo_outlined,
@@ -991,7 +1014,6 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                   ),
                 ),
               ),
-              const Spacer(),
               ElevatedButton(
                 onPressed: item.isSubmitting ? null : () => _submitItemReview(item, index),
                 style: ElevatedButton.styleFrom(
@@ -1004,6 +1026,7 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                 child: item.isSubmitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.verified_rounded, size: 14, color: Color(0xFF10B981)),
                           SizedBox(width: 6),
@@ -1077,6 +1100,8 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                       children: [
                         Text(
                           reviewed.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -1086,11 +1111,14 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
                         const SizedBox(height: 2),
                         Text(
                           '${reviewed.storeName} • ${reviewed.dateText}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -1465,12 +1493,14 @@ class RateReviewScreenState extends State<RateReviewScreen> with SingleTickerPro
             children: [
               Icon(Icons.shield_outlined, color: Color(0xFF64748B), size: 18),
               SizedBox(width: 8),
-              Text(
-                'How Buggy Review & Earn Works',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  'How Buggy Review & Earn Works',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],

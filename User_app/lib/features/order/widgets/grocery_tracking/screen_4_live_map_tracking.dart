@@ -7,6 +7,7 @@ import 'package:sixam_mart/features/order/controllers/order_controller.dart';
 import 'package:sixam_mart/features/order/domain/models/order_model.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/grocery_stepper_widget.dart';
 import 'package:sixam_mart/helper/marker_helper.dart';
+import 'package:sixam_mart/helper/route_helper.dart';
 import 'package:sixam_mart/util/dimensions.dart';
 import 'package:sixam_mart/util/images.dart';
 import 'package:sixam_mart/util/styles.dart';
@@ -141,7 +142,7 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
 
   @override
   Widget build(BuildContext context) {
-    final List<StepperStepData> steps = const [
+    const List<StepperStepData> steps = [
       StepperStepData(label: 'Confirmed', subtext: '10:24 AM', isCompleted: true),
       StepperStepData(label: 'Preparing', subtext: '10:28 AM', isCompleted: true),
       StepperStepData(label: 'Out for Delivery', subtext: 'Now', isActive: true, isSubtextGreen: true),
@@ -164,7 +165,15 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F2937), size: 20),
-          onPressed: widget.onBack ?? () => Navigator.of(context).maybePop(),
+          onPressed: widget.onBack ?? () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else if (Get.key.currentState?.canPop() ?? false) {
+              Get.back();
+            } else {
+              Get.offAllNamed(RouteHelper.getInitialRoute());
+            }
+          },
         ),
         title: Column(
           children: [
@@ -187,7 +196,7 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault, vertical: 6),
-            child: GroceryStepperWidget(steps: steps),
+            child: const GroceryStepperWidget(steps: steps),
           ),
 
           // 2. Map with floating card
@@ -298,6 +307,8 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
                                 children: [
                                   Text(
                                     riderName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: robotoBold.copyWith(fontSize: 15, color: const Color(0xFF111827)),
                                   ),
                                   const SizedBox(height: 2),
@@ -305,9 +316,13 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
                                     children: [
                                       const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 16),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        '4.8 (320 deliveries)',
-                                        style: robotoRegular.copyWith(fontSize: 12, color: const Color(0xFF6B7280)),
+                                      Flexible(
+                                        child: Text(
+                                          '4.8 (320 deliveries)',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: robotoRegular.copyWith(fontSize: 12, color: const Color(0xFF6B7280)),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -325,9 +340,9 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(9),
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFFF3F4F6),
+                                  color: Color(0xFFF3F4F6),
                                 ),
                                 child: const Icon(Icons.phone_rounded, color: Color(0xFF1F2937), size: 18),
                               ),
@@ -338,9 +353,9 @@ class _Screen4LiveMapTrackingState extends State<Screen4LiveMapTracking> {
                               onTap: widget.onOpenChat ?? () {},
                               child: Container(
                                 padding: const EdgeInsets.all(9),
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFFF3F4F6),
+                                  color: Color(0xFFF3F4F6),
                                 ),
                                 child: const Icon(Icons.chat_bubble_rounded, color: Color(0xFF1F2937), size: 18),
                               ),

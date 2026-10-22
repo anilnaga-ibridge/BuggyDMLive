@@ -383,12 +383,16 @@ class _MyOrderScreenState extends State<MyOrderScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'Live 8-Stage Delivery Tracking',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                      const Flexible(
+                        child: Text(
+                          'Live 8-Stage Delivery Tracking',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -413,6 +417,8 @@ class _MyOrderScreenState extends State<MyOrderScreen> {
                   const SizedBox(height: 2),
                   const Text(
                     'Real-time rider map & step-by-step order journey',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w400,
@@ -1210,7 +1216,8 @@ class _OrderItemCard extends StatelessWidget {
                               color: Color(0xFF0F172A),
                             ),
                           ),
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
                                 '${'order'.tr} #${orderModel.id ?? ''}',

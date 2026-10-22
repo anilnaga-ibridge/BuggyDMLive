@@ -21,7 +21,17 @@ class _OrderDetailsAppBar extends StatelessWidget implements PreferredSizeWidget
         child: Row(children: [
           _CircleIconButton(
             icon: Icons.arrow_back,
-            onTap: () => Get.back(),
+            onTap: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else if (Get.key.currentState?.canPop() ?? false) {
+                Get.back();
+              } else if (Get.previousRoute.isNotEmpty && Get.previousRoute != Get.currentRoute && Get.previousRoute != '/') {
+                Get.back();
+              } else {
+                Get.offAllNamed(RouteHelper.getInitialRoute());
+              }
+            },
             isback: true,
           ),
           const SizedBox(width: Dimensions.paddingSizeDefault),

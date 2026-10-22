@@ -103,8 +103,10 @@ class StoreRepository implements StoreRepositoryInterface {
     switch(source) {
       case DataSourceEnum.client:
         Response response = await apiClient.getData('${AppConstants.storeUri}/$filterBy?store_type=$storeType&offset=$offset&limit=12$nameQuery', moduleScoped: true);
+        print('DEBUG_STORE_RESP: statusCode=${response.statusCode} body=${response.bodyString != null ? (response.bodyString!.length > 100 ? response.bodyString!.substring(0, 100) : response.bodyString) : 'null'}');
         if(response.statusCode == 200){
           storeModel = StoreModel.fromJson(response.body);
+          print('DEBUG_STORE_PARSED: count=${storeModel.stores?.length}');
           LocalClient.organize(DataSourceEnum.client, cacheId, jsonEncode(response.body), apiClient.getHeader());
         }
 

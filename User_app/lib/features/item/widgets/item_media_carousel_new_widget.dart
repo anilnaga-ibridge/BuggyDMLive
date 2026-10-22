@@ -1,4 +1,3 @@
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sixam_mart/common/widgets/custom_image.dart';
@@ -41,7 +40,11 @@ class ItemMediaCarouselNewWidget extends StatefulWidget {
     if(videoUrl != null && videoUrl.isNotEmpty) mediaList.add(videoUrl);
     if(item.imageFullUrl?.isNotEmpty == true) mediaList.add(item.imageFullUrl!);
     if(!isCampaign && item.imagesFullUrl != null && item.imagesFullUrl!.isNotEmpty) {
-      mediaList.addAll(item.imagesFullUrl!.where((u) => u.isNotEmpty));
+      for (final u in item.imagesFullUrl!) {
+        if (u.isNotEmpty && !mediaList.contains(u)) {
+          mediaList.add(u);
+        }
+      }
     }
     return mediaList;
   }

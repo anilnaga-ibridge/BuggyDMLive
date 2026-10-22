@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:sixam_mart/features/address/domain/models/address_model.dart';
 import 'package:sixam_mart/features/order/controllers/order_controller.dart';
 import 'package:sixam_mart/features/order/domain/models/order_model.dart';
+import 'package:sixam_mart/features/order/domain/models/order_details_model.dart';
 import 'package:sixam_mart/features/store/domain/models/store_model.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/screen_1_payment_success.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/screen_2_store_preparing.dart';
@@ -49,6 +50,41 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
   late GroceryFlowStage _currentStage;
   Timer? _timer;
   bool _manualOverride = false;
+  List<OrderDetailsModel>? _cachedDetails;
+  final List<GroceryFlowStage> _stageHistory = [];
+
+  void _goToStage(GroceryFlowStage newStage, {bool manual = false}) {
+    if (_currentStage != newStage) {
+      _stageHistory.add(_currentStage);
+      setState(() {
+        if (manual) {
+          _manualOverride = true;
+        }
+        _currentStage = newStage;
+      });
+    }
+  }
+
+  void _handleBack() {
+    if (_stageHistory.isNotEmpty) {
+      setState(() {
+        _currentStage = _stageHistory.removeLast();
+      });
+      return;
+    }
+
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else if (Get.key.currentState?.canPop() ?? false) {
+      Get.back();
+    } else if (Get.previousRoute.isNotEmpty &&
+        Get.previousRoute != Get.currentRoute &&
+        Get.previousRoute != '/') {
+      Get.back();
+    } else {
+      Get.offAllNamed(RouteHelper.getInitialRoute());
+    }
+  }
 
   @override
   void initState() {
@@ -59,10 +95,14 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
 
   void _loadOrderData() {
     final orderController = Get.find<OrderController>();
+    if (orderController.orderDetails != null && orderController.orderDetails!.isNotEmpty) {
+      _cachedDetails = orderController.orderDetails;
+    }
+
     orderController.trackOrder(
       widget.orderId.toString(),
       widget.orderModel,
-      false,
+      true, // fromTracking: true prevents wiping _orderDetails to null
       contactNumber: widget.contactNumber,
     ).then((response) {
       if (response != null && !response.isSuccess) {
@@ -76,7 +116,16 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
         });
       }
     });
-    orderController.getOrderDetails(widget.orderId.toString());
+
+    if (_cachedDetails == null || _cachedDetails!.isEmpty) {
+      orderController.getOrderDetails(widget.orderId.toString()).then((details) {
+        if (details != null && details.isNotEmpty && mounted) {
+          setState(() {
+            _cachedDetails = details;
+          });
+        }
+      });
+    }
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
@@ -152,26 +201,37 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<OrderController>(builder: (orderController) {
-      OrderModel? order = orderController.trackModel ?? widget.orderModel;
-      order ??= _createFallbackOrder(widget.orderId);
-      final details = orderController.orderDetails;
+    return PopScope(
+      canPop: _stageHistory.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: GetBuilder<OrderController>(builder: (orderController) {
+        OrderModel? order = orderController.trackModel ?? widget.orderModel;
+        order ??= _createFallbackOrder(widget.orderId);
 
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            // Top Stage Switcher / Simulator Bar so user can test and view all 8 screens
-            _buildInteractiveStageBar(),
+        if (orderController.orderDetails != null && orderController.orderDetails!.isNotEmpty) {
+          _cachedDetails = orderController.orderDetails;
+        }
+        final details = _cachedDetails ?? orderController.orderDetails;
 
-            // Main Active Screen View (1 of 8)
-            Expanded(
-              child: _buildCurrentStageView(order, details),
-            ),
-          ],
-        ),
-      );
-    });
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Column(
+            children: [
+              // Top Stage Switcher / Simulator Bar so user can test and view all 8 screens
+              _buildInteractiveStageBar(),
+
+              // Main Active Screen View (1 of 8)
+              Expanded(
+                child: _buildCurrentStageView(order, details),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
   }
 
   Widget _buildInteractiveStageBar() {
@@ -199,12 +259,7 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
             return Padding(
               padding: const EdgeInsets.only(right: 6),
               child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _manualOverride = true;
-                    _currentStage = item.$1;
-                  });
-                },
+                onTap: () => _goToStage(item.$1, manual: true),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -237,12 +292,8 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
         return Screen1PaymentSuccess(
           order: order,
           orderId: widget.orderId.toString(),
-          onBack: () => Get.offAllNamed(RouteHelper.getInitialRoute()),
-          onViewOrderDetails: () {
-            setState(() {
-              _currentStage = GroceryFlowStage.storePreparing;
-            });
-          },
+          onBack: _handleBack,
+          onViewOrderDetails: () => _goToStage(GroceryFlowStage.storePreparing),
           onBackHome: () => Get.offAllNamed(RouteHelper.getInitialRoute()),
         );
 
@@ -250,47 +301,35 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
         return Screen2StorePreparing(
           order: order,
           orderDetails: details,
-          onBack: () => Navigator.of(context).maybePop(),
-          onNextStage: () {
-            setState(() {
-              _currentStage = GroceryFlowStage.riderAssigned;
-            });
-          },
+          onBack: _handleBack,
+          onNextStage: () => _goToStage(GroceryFlowStage.riderAssigned),
         );
 
       case GroceryFlowStage.riderAssigned:
         return Screen3RiderAssigned(
           order: order,
-          onBack: () => Navigator.of(context).maybePop(),
-          onOpenLiveMap: () {
-            setState(() {
-              _currentStage = GroceryFlowStage.liveMapTracking;
-            });
-          },
+          onBack: _handleBack,
+          onOpenLiveMap: () => _goToStage(GroceryFlowStage.liveMapTracking),
         );
 
       case GroceryFlowStage.liveMapTracking:
         return Screen4LiveMapTracking(
           order: order,
-          onBack: () => Navigator.of(context).maybePop(),
+          onBack: _handleBack,
         );
 
       case GroceryFlowStage.riderNearby:
         return Screen5RiderNearby(
           order: order,
-          onBack: () => Navigator.of(context).maybePop(),
+          onBack: _handleBack,
         );
 
       case GroceryFlowStage.orderDelivered:
         return Screen6OrderDelivered(
           order: order,
           orderId: widget.orderId.toString(),
-          onBack: () => Navigator.of(context).maybePop(),
-          onViewDetails: () {
-            setState(() {
-              _currentStage = GroceryFlowStage.postOrderDetails;
-            });
-          },
+          onBack: _handleBack,
+          onViewDetails: () => _goToStage(GroceryFlowStage.postOrderDetails),
           onBackHome: () => Get.offAllNamed(RouteHelper.getInitialRoute()),
         );
 
@@ -298,18 +337,14 @@ class _GroceryOrderFlowScreenState extends State<GroceryOrderFlowScreen> {
         return Screen7PostDeliveryDetails(
           order: order,
           orderDetails: details,
-          onBack: () => Navigator.of(context).maybePop(),
-          onOpenRating: () {
-            setState(() {
-              _currentStage = GroceryFlowStage.rateExperience;
-            });
-          },
+          onBack: _handleBack,
+          onOpenRating: () => _goToStage(GroceryFlowStage.rateExperience),
         );
 
       case GroceryFlowStage.rateExperience:
         return Screen8RateExperience(
           order: order,
-          onBack: () => Navigator.of(context).maybePop(),
+          onBack: _handleBack,
           onSubmitComplete: () => Get.offAllNamed(RouteHelper.getInitialRoute()),
         );
     }

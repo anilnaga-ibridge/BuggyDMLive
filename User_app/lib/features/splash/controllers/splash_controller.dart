@@ -362,6 +362,7 @@ class SplashController extends GetxController implements GetxService {
           _selectedModuleIndex = targetIndex;
           _module = _moduleList![targetIndex];
           splashServiceInterface.setModule(_module);
+          HomeScreen.loadData(true, fromModule: true);
         } else {
           int currentIndex = _moduleList!.indexWhere((m) => m.id == _module!.id);
           _selectedModuleIndex = currentIndex != -1 ? currentIndex : targetIndex;

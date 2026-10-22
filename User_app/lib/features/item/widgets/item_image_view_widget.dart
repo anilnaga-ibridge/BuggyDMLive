@@ -82,7 +82,7 @@ class ItemImageViewWidget extends StatelessWidget {
                     },
 
                     // onFullscreenTap: _isYoutubeUrl(mediaUrl) ? null : () => Get.dialog(ItemMediaDialog(item: item!, isCampaign: isCampaign)),
-                  ) : CustomImage(image: mediaUrl, height: 200, width: MediaQuery.of(context).size.width),
+                  ) : CustomImage(image: mediaUrl, height: 200, width: MediaQuery.of(context).size.width, fit: BoxFit.contain),
                 );
               },
               onPageChanged: (index) {
@@ -207,7 +207,11 @@ class ItemImageViewWidget extends StatelessWidget {
     }
 
     if (!isCampaign && item.imagesFullUrl != null && item.imagesFullUrl!.isNotEmpty) {
-      mediaList.addAll(item.imagesFullUrl!.where((url) => url.isNotEmpty));
+      for (final url in item.imagesFullUrl!) {
+        if (url.isNotEmpty && !mediaList.contains(url)) {
+          mediaList.add(url);
+        }
+      }
     }
 
     return mediaList;

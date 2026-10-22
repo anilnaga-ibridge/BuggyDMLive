@@ -21,10 +21,10 @@ import 'package:sixam_mart/util/app_constants.dart';
 import 'package:sixam_mart/util/dimensions.dart';
 import 'package:sixam_mart/util/images.dart';
 import 'package:sixam_mart/util/styles.dart';
+import 'package:sixam_mart/common/widgets/code_picker_widget.dart';
 import 'package:sixam_mart/common/widgets/custom_app_bar.dart';
 import 'package:sixam_mart/common/widgets/custom_button.dart';
 import 'package:sixam_mart/common/widgets/custom_snackbar.dart';
-import 'package:sixam_mart/common/widgets/custom_text_field.dart';
 import 'package:sixam_mart/common/widgets/footer_view.dart';
 import 'package:sixam_mart/common/widgets/menu_drawer.dart';
 import 'package:sixam_mart/features/location/screens/pick_map_screen.dart';
@@ -138,7 +138,11 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Get.isDarkMode;
+    final Color bgColor = isDark ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF8FAFC);
+
     return Scaffold(
+      backgroundColor: bgColor,
       endDrawer: const MenuDrawer(), endDrawerEnableOpenDragGesture: false,
       appBar: CustomAppBar(title: widget.forGuest ? 'set_address'.tr : widget.address == null ? 'add_new_address'.tr : 'update_address'.tr),
       body: SafeArea(
@@ -151,611 +155,863 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             }
             _addressController.text = addr;
 
-            return ResponsiveHelper.isDesktop(context) ?
-              SingleChildScrollView(
-                child: FooterView(
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 64,
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.10),
-                        child: Center(child: Text('address'.tr, style: robotoMedium)),
-                      ),
-                      const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                      Center(
+            return ResponsiveHelper.isDesktop(context)
+                ? SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                    child: FooterView(
+                      child: Center(
                         child: SizedBox(
                           width: Dimensions.webMaxWidth,
-                          child: Row( crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
+                                margin: const EdgeInsets.only(bottom: 24),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(Dimensions.radiusDefault),
-                                  color: Theme.of(context).cardColor,
-                                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5, spreadRadius: 1)],
+                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                                  ),
                                 ),
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Row(
                                   children: [
                                     Container(
-                                      width : 680,
-                                      height: 250,
+                                      padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
-                                        border: Border.all(width: 2, color: Theme.of(context).primaryColor),
+                                        color: Theme.of(context).primaryColor,
+                                        shape: BoxShape.circle,
                                       ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
-                                        child: Stack(clipBehavior: Clip.none, children: [
-                                          GoogleMap(
-                                            initialCameraPosition: CameraPosition(target: _initialPosition, zoom: 16),
-                                            minMaxZoomPreference: const MinMaxZoomPreference(0, 16),
-                                            onTap: (latLng) {
-                                              if(ResponsiveHelper.isDesktop(Get.context)) {
-
-                                              }else {
-                                                Get.toNamed(
-                                                  RouteHelper.getPickMapRoute('add-address', false),
-                                                  arguments: PickMapScreen(
-                                                    fromAddAddress: true,
-                                                    fromSignUp: false,
-                                                    googleMapController: locationController.mapController,
-                                                    route: null,
-                                                    canRoute: false,
-                                                  ),
-                                                );
-                                              }
-                                            },
-                                            zoomControlsEnabled: false,
-                                            compassEnabled: false,
-                                            indoorViewEnabled: true,
-                                            mapToolbarEnabled: false,
-                                            onCameraIdle: () {
-                                              _idleDebouncer.run(() {
-                                                if (!mounted) return;
-                                                locationController.updatePosition(_cameraPosition, true);
-                                              });
-                                            },
-                                            onCameraMove: ((position) => _cameraPosition = position),
-                                            onMapCreated: (GoogleMapController controller) {
-                                              locationController.setMapController(controller);
-                                              if(widget.address == null) {
-                                                locationController.getCurrentLocation(true, mapController: controller);
-                                              }
-                                            },
-                                            style: Get.isDarkMode ? Get.find<ThemeController>().darkMap : Get.find<ThemeController>().lightMap,
-                                            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                                              Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
-                                              Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
-                                              Factory<ScaleGestureRecognizer>(() => ScaleGestureRecognizer()),
-                                              Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
-                                              Factory<VerticalDragGestureRecognizer>(() => VerticalDragGestureRecognizer()),
-                                            },
+                                      child: const Icon(Icons.add_location_alt_rounded, color: Colors.white, size: 22),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            widget.forGuest
+                                                ? "set_address".tr
+                                                : widget.address == null
+                                                    ? "add_new_address".tr
+                                                    : "update_address".tr,
+                                            style: robotoBold.copyWith(fontSize: 18, color: Theme.of(context).textTheme.bodyLarge?.color),
                                           ),
-                                          locationController.loading ? const Center(child: CircularProgressIndicator()) : const SizedBox(),
-                                          Center(child: !locationController.loading ? Image.asset(Images.pickMarker, height: 50, width: 50)
-                                              : const CircularProgressIndicator()),
-                                          Positioned(
-                                            bottom: 10, left: 10,
-                                            child: InkWell(
-                                              onTap: () => _checkPermission(() {
-                                                locationController.getCurrentLocation(true, mapController: locationController.mapController);
-                                              }),
-                                              child: Container(
-                                                width: 30, height: 30,
-                                                margin: const EdgeInsets.only(right: Dimensions.paddingSizeLarge),
-                                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimensions.radiusSmall), color: Colors.white),
-                                                child: Icon(Icons.my_location, color: Theme.of(context).primaryColor, size: 20),
-                                              ),
-                                            ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Pin your exact location and provide delivery instructions for seamless drop-off",
+                                            style: robotoRegular.copyWith(fontSize: 13, color: Theme.of(context).disabledColor),
                                           ),
-                                          Positioned(
-                                            top: 10, right: 0,
-                                            child: InkWell(
-                                              onTap: () {
-                                                if(ResponsiveHelper.isDesktop(Get.context)) {
-                                                  showGeneralDialog(context: context, pageBuilder: (_,_,_) {
-                                                    return SizedBox(
-                                                      height: 300, width: 300,
-                                                      child: PickMapScreen(fromSignUp: false, canRoute: false, fromAddAddress: true, route: null, googleMapController: locationController.mapController)
-                                                    );
-                                                  });
-                                                }else {
-                                                  Get.toNamed(
-                                                    RouteHelper.getPickMapRoute('add-address', false),
-                                                    arguments: PickMapScreen(
-                                                      fromAddAddress: true,
-                                                      fromSignUp: false,
-                                                      googleMapController: locationController.mapController,
-                                                      route: null,
-                                                      canRoute: false,
-                                                    ),
-                                                  );
-                                                }
-                                              },
-                                              child: Container(
-                                                width: 30, height: 30,
-                                                margin: const EdgeInsets.only(right: Dimensions.paddingSizeLarge),
-                                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimensions.radiusSmall), color: Colors.white),
-                                                child: Icon(Icons.fullscreen, color: Theme.of(context).primaryColor, size: 20),
-                                              ),
-                                            ),
-                                          ),
-                                        ]),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: Dimensions.paddingSizeLarge),
-
-
-                                    Text(
-                                      'label_as'.tr,
-                                      style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyMedium!.color),
-                                    ),
-                                    const SizedBox(height: Dimensions.paddingSizeSmall),
-
-                                    SizedBox(height: 50, child: ListView.builder(
-                                      shrinkWrap: true,
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: locationController.addressTypeList.length,
-                                      itemBuilder: (context, index) => Padding(
-                                        padding: const EdgeInsets.only(right: Dimensions.paddingSizeSmall),
-                                        child: InkWell(
-                                          onTap: () {
-                                            _otherSelect = index == 2;
-                                            locationController.setAddressTypeIndex(index);
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeLarge, vertical: Dimensions.paddingSizeSmall),
-                                            decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(Dimensions.radiusDefault),
-                                                color: locationController.addressTypeIndex == index ? Theme.of(context).primaryColor : Theme.of(context).cardColor,
-                                                boxShadow: const [BoxShadow(color: Colors.black12, spreadRadius: 1, blurRadius: 5)],
-                                                // border: Border.all(color: locationController.addressTypeIndex == index ? Theme.of(context).primaryColor : Theme.of(context).disabledColor)
-                                            ),
-                                            child: Row(children: [
-                                              SizedBox(
-                                                height: 24, width: 24,
-                                                child: Image.asset(
-                                                  index == 0 ? Images.homeIcon : index == 1 ? Images.workIcon : Images.otherIcon,
-                                                  color: locationController.addressTypeIndex == index ? Theme.of(context).cardColor : Theme.of(context).disabledColor,
-                                                ),
-                                              ),
-                                              const SizedBox(width: Dimensions.paddingSizeSmall),
-
-                                              Text(index == 0 ? 'home'.tr : index == 1 ? 'office'.tr : 'others'.tr,
-                                                style: robotoRegular.copyWith(color: locationController.addressTypeIndex == index ? Theme.of(context).cardColor : Theme.of(context).disabledColor),
-                                              )
-                                            ]),
-                                          ),
-                                        ),
-                                      ),
-                                    )),
-                                    const SizedBox(height: Dimensions.paddingSizeSmall),
-
-                                    _otherSelect ? SizedBox (
-                                      height: 90, width: 680,
-                                      child: CustomTextField(
-                                        titleText: '${'level_name'.tr}(${'optional'.tr})',
-                                        hintText: 'write_level_name'.tr,
-                                        showTitle: true,
-                                        inputType: TextInputType.text,
-                                        controller: _levelController,
-                                        focusNode: _levelNode,
-                                        nextFocus: _addressNode,
-                                        capitalization: TextCapitalization.words,
-                                      ),
-                                    ) : const SizedBox(),
-
-                                    const SizedBox(height: Dimensions.paddingSizeLarge),
-                                    SizedBox(height: 90, width: 680,
-                                      child: CustomTextField(
-                                        suffixIcon: Icons.my_location,
-                                        showTitle: true,
-                                        titleText: 'delivery_address'.tr,
-                                        hintText: 'write_delivery_address'.tr,
-                                        inputType: TextInputType.streetAddress,
-                                        controller: _addressController,
-                                        focusNode: _addressNode,
-                                        nextFocus: _nameNode,
-                                        required: true,
-                                        onChanged: (text) => locationController.setPlaceMark(text),
-                                      ),
-                                    ),
-                                    const SizedBox(height: Dimensions.paddingSizeLarge),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: Dimensions.paddingSizeLarge),
-
-                              Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(Dimensions.radiusDefault),
-                                      color: Theme.of(context).cardColor,
-                                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5, spreadRadius: 1)],
-                                    ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Left column: Interactive Map Card + Save Address As
+                                  Expanded(
+                                    flex: 5,
                                     child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-
-                                        CustomTextField(
-                                          showTitle: true,
-                                          titleText: 'contact_person_name'.tr,
-                                          hintText: 'write_name'.tr,
-                                          showLabelText: false,
-                                          inputType: TextInputType.name,
-                                          controller: _contactPersonNameController,
-                                          focusNode: _nameNode,
-                                          nextFocus: _numberNode,
-                                          capitalization: TextCapitalization.words,
-                                          required: true,
-                                        ),
-                                        const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                                        CustomTextField(
-                                          showTitle: true,
-                                          titleText: 'contact_person_number'.tr,
-                                          hintText: 'write_number'.tr,
-                                          showLabelText: false,
-                                          controller: _contactPersonNumberController,
-                                          focusNode: _numberNode,
-                                          nextFocus: widget.forGuest ? _emailFocus :_streetNode,
-                                          inputType: TextInputType.phone,
-                                          isPhone: true,
-                                          required: true,
-                                          onCountryChanged: (CountryCode countryCode) {
-                                            _countryDialCode = countryCode.dialCode;
-                                          },
-                                          countryDialCode: _countryDialCode ?? Get.find<LocalizationController>().locale.countryCode,
-                                        ),
-                                        const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                                        widget.forGuest ? CustomTextField(
-                                          showTitle: true,
-                                          titleText: 'email'.tr,
-                                          hintText: 'email'.tr,
-                                          showLabelText: false,
-                                          controller: _emailController,
-                                          focusNode: _emailFocus,
-                                          nextFocus: _streetNode,
-                                          inputType: TextInputType.emailAddress,
-                                          required: true,
-                                        ) : const SizedBox(),
-                                        SizedBox(height: widget.forGuest ? Dimensions.paddingSizeLarge : 0),
-
-                                        CustomTextField(
-                                          showTitle: true,
-                                          hintText: 'street_number'.tr,
-                                          titleText: '${'street_number'.tr} (${'optional'.tr})',
-                                          showLabelText: false,
-                                          inputType: TextInputType.streetAddress,
-                                          focusNode: _streetNode,
-                                          nextFocus: _houseNode,
-                                          controller: _streetNumberController,
-                                        ),
-                                        const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                                        Row(children: [
-                                          Expanded(
-                                            child: CustomTextField(
-                                              showTitle: true,
-                                              hintText: 'house_name'.tr,
-                                              titleText: '${'house'.tr} (${'optional'.tr})',
-                                              showLabelText: false,
-                                              inputType: TextInputType.text,
-                                              focusNode: _houseNode,
-                                              nextFocus: _floorNode,
-                                              controller: _houseController,
-                                            ),
-                                          ),
-                                          const SizedBox(width: Dimensions.paddingSizeSmall),
-
-                                          Expanded(
-                                            child: CustomTextField(
-                                              hintText: 'floor_number'.tr,
-                                              showLabelText: false,
-                                              showTitle: true,
-                                              titleText: "${'floor'.tr} (${'optional'.tr})",
-                                              inputType: TextInputType.text,
-                                              focusNode: _floorNode,
-                                              inputAction: TextInputAction.done,
-                                              controller: _floorController,
-                                            ),
-                                          ),
-                                        ]),
-                                        const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                                        button(locationController),
+                                        _buildMapCard(context, locationController, isDesktop: true),
+                                        const SizedBox(height: 20),
+                                        _buildSaveAsSection(context, locationController),
                                       ],
                                     ),
-                                  )
+                                  ),
+                                  const SizedBox(width: 24),
+                                  // Right column: Address Details + Contact Details + Action Button
+                                  Expanded(
+                                    flex: 6,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildAddressDetailsCard(context, locationController),
+                                        const SizedBox(height: 20),
+                                        _buildContactDetailsCard(context, locationController),
+                                        const SizedBox(height: 20),
+                                        _buildBottomActionBar(context, locationController, isDesktop: true),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-
-
                             ],
                           ),
                         ),
-                      )
-                    ],
+                      ),
+                    ),
+                  )
+            : Column(children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  child: Center(
+                    child: SizedBox(
+                      width: Dimensions.webMaxWidth,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildMapCard(context, locationController),
+                          const SizedBox(height: 16),
+                          _buildSaveAsSection(context, locationController),
+                          const SizedBox(height: 16),
+                          _buildAddressDetailsCard(context, locationController),
+                          const SizedBox(height: 16),
+                          _buildContactDetailsCard(context, locationController),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              )
-            : Column(children: [
-              Expanded(child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: Dimensions.paddingSizeSmall, horizontal: Dimensions.paddingSizeLarge),
-                child: Center(child: SizedBox(width: Dimensions.webMaxWidth, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ),
 
-                  Container(
-                    height: 140,
-                    width: MediaQuery.of(context).size.width,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
-                      border: Border.all(width: 2, color: Theme.of(context).primaryColor),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
-                      child: Stack(clipBehavior: Clip.none, children: [
-                        GoogleMap(
-                          initialCameraPosition: CameraPosition(target: _initialPosition, zoom: 16),
-                          minMaxZoomPreference: const MinMaxZoomPreference(0, 16),
-                          onTap: (latLng) {
-                          if(ResponsiveHelper.isDesktop(Get.context)) {
-                            showGeneralDialog(context: context, pageBuilder: (_,_,_) {
-                              return SizedBox(
-                                  height: 300, width: 300,
-                                  child: PickMapScreen(fromSignUp: false, canRoute: false, fromAddAddress: true, route: null, googleMapController: locationController.mapController)
-                              );
-                            });
-                            // Get.dialog(PickMapScreen(fromSignUp: false, canRoute: false, fromAddAddress: true, route: null, googleMapController: locationController.mapController));
-                          }else {
-                            Get.toNamed(
-                              RouteHelper.getPickMapRoute('add-address', false),
-                              arguments: PickMapScreen(
-                                fromAddAddress: true,
-                                fromSignUp: false,
-                                googleMapController: locationController.mapController,
-                                route: null,
-                                canRoute: false,
-                              ),
-                            );
-                          }
-                          },
-                          zoomControlsEnabled: false,
-                          compassEnabled: false,
-                          indoorViewEnabled: true,
-                          mapToolbarEnabled: false,
-                          onCameraIdle: () {
-                            _idleDebouncer.run(() {
-                              if (!mounted) return;
-                              locationController.updatePosition(_cameraPosition, true);
-                            });
-                          },
-                          onCameraMove: ((position) {
-                            _cameraPosition = position;
-                          }
-                          ),
-                          onMapCreated: (GoogleMapController controller) {
-                            locationController.setMapController(controller);
-                            if(widget.address == null) {
-                              locationController.getCurrentLocation(true, mapController: controller);
-                            }
-                          },
-                          myLocationButtonEnabled: false,
-                          style: Get.isDarkMode ? Get.find<ThemeController>().darkMap : Get.find<ThemeController>().lightMap,
-                          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
-                            Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
-                            Factory<ScaleGestureRecognizer>(() => ScaleGestureRecognizer()),
-                            Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
-                            Factory<VerticalDragGestureRecognizer>(() => VerticalDragGestureRecognizer()),
-                          },
-                        ),
-                        locationController.loading ? const Center(child: CircularProgressIndicator()) : const SizedBox(),
-                        Center(child: !locationController.loading ? Image.asset(Images.pickMarker, height: 50, width: 50)
-                            : const CircularProgressIndicator()),
-                        Positioned(
-                          bottom: 10, right: 0,
-                          child: InkWell(
-                            onTap: () => _checkPermission(() {
-                              locationController.getCurrentLocation(true, mapController: locationController.mapController);
-                            }),
-                            child: Container(
-                              width: 30, height: 30,
-                              margin: const EdgeInsets.only(right: Dimensions.paddingSizeLarge),
-                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimensions.radiusSmall), color: Colors.white),
-                              child: Icon(Icons.my_location, color: Theme.of(context).primaryColor, size: 20),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 10, right: 0,
-                          child: InkWell(
-                            onTap: () {
-                              if(ResponsiveHelper.isDesktop(Get.context)) {
-                                showGeneralDialog(context: context, pageBuilder: (_,_,_) {
-                                  return SizedBox(
-                                      height: 300, width: 300,
-                                      child: PickMapScreen(fromSignUp: false, canRoute: false, fromAddAddress: true, route: null, googleMapController: locationController.mapController)
-                                  );
-                                });
-                              }else {
-                                Get.toNamed(
-                                  RouteHelper.getPickMapRoute('add-address', false),
-                                  arguments: PickMapScreen(
-                                    fromAddAddress: true,
-                                    fromSignUp: false,
-                                    googleMapController: locationController.mapController,
-                                    route: null,
-                                    canRoute: false,
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              width: 30, height: 30,
-                              margin: const EdgeInsets.only(right: Dimensions.paddingSizeLarge),
-                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimensions.radiusSmall), color: Colors.white),
-                              child: Icon(Icons.fullscreen, color: Theme.of(context).primaryColor, size: 20),
-                            ),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(height: Dimensions.paddingSizeSmall),
-
-                  Center(child: Text(
-                    'add_the_location_correctly'.tr,
-                    style: robotoRegular.copyWith(color: Theme.of(context).disabledColor, fontSize: Dimensions.fontSizeExtraSmall),
-                  )),
-                  const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                  Text(
-                    'label_as'.tr,
-                    style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyMedium!.color),
-                  ),
-                  const SizedBox(height: Dimensions.paddingSizeSmall),
-
-                  SizedBox(height: 50, child: ListView.builder(
-                    shrinkWrap: true,
-                    scrollDirection: Axis.horizontal,
-                    itemCount: locationController.addressTypeList.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(right: Dimensions.paddingSizeSmall),
-                      child: InkWell(
-                        onTap: () {
-                          _otherSelect = index == 2;
-                          locationController.setAddressTypeIndex(index);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeLarge, vertical: Dimensions.paddingSizeSmall),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(Dimensions.radiusDefault), color: locationController.addressTypeIndex == index
-                              ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
-                            boxShadow: locationController.addressTypeIndex == index ? null : const [BoxShadow(color: Colors.black12, spreadRadius: 1, blurRadius: 5)],
-                            border: Border.all(color: locationController.addressTypeIndex == index ? Theme.of(context).primaryColor : Theme.of(context).disabledColor)
-                          ),
-                          child: SizedBox(
-                            height: 24, width: 24,
-                            child: Image.asset(
-                              index == 0 ? Images.homeIcon : index == 1 ? Images.workIcon : Images.otherIcon,
-                              color: locationController.addressTypeIndex == index ? Theme.of(context).primaryColor : Theme.of(context).disabledColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )),
-                  SizedBox(height: _otherSelect ? Dimensions.paddingSizeLarge : 0),
-
-                  _otherSelect ? CustomTextField(
-                    labelText: '${'level_name'.tr}(${'optional'.tr})',
-                    titleText: 'write_level_name'.tr,
-                    inputType: TextInputType.text,
-                    controller: _levelController,
-                    focusNode: _levelNode,
-                    nextFocus: _addressNode,
-                    capitalization: TextCapitalization.words,
-                  ) : const SizedBox(),
-                  const SizedBox(height: Dimensions.paddingSizeExtremeLarge),
-
-                  CustomTextField(
-                    labelText: widget.fromRide || (Get.find<SplashController>().module != null && Get.find<SplashController>().module!.moduleType.toString() == AppConstants.taxi) ? 'pickup_address'.tr : 'delivery_address'.tr,
-                    titleText: 'write_delivery_address'.tr,
-                    inputType: TextInputType.streetAddress,
-                    controller: _addressController,
-                    focusNode: _addressNode,
-                    nextFocus: _nameNode,
-                    required: true,
-                    onChanged: (text) => locationController.setPlaceMark(text),
-                  ),
-                  const SizedBox(height: Dimensions.paddingSizeExtremeLarge),
-
-                  CustomTextField(
-                    labelText: 'contact_person_name'.tr,
-                    titleText: 'write_name'.tr,
-                    inputType: TextInputType.name,
-                    controller: _contactPersonNameController,
-                    focusNode: _nameNode,
-                    nextFocus: _numberNode,
-                    capitalization: TextCapitalization.words,
-                    required: true,
-                  ),
-                  const SizedBox(height: Dimensions.paddingSizeExtremeLarge),
-
-                  CustomTextField(
-                    labelText: 'contact_person_number'.tr,
-                    titleText: 'write_number'.tr,
-                    controller: _contactPersonNumberController,
-                    focusNode: _numberNode,
-                    nextFocus: widget.forGuest ? _emailFocus : _streetNode,
-                    inputType: TextInputType.phone,
-                    isPhone: true,
-                    required: true,
-                    onCountryChanged: (CountryCode countryCode) {
-                      _countryDialCode = countryCode.dialCode;
-                    },
-                    countryDialCode: _countryDialCode ?? Get.find<LocalizationController>().locale.countryCode,
-                  ),
-                  const SizedBox(height: Dimensions.paddingSizeExtremeLarge),
-
-                  widget.forGuest ? CustomTextField(
-                    labelText: 'email'.tr,
-                    titleText: 'enter_email'.tr,
-                    controller: _emailController,
-                    focusNode: _emailFocus,
-                    nextFocus: _streetNode,
-                    inputType: TextInputType.emailAddress,
-                    prefixIcon: Icons.mail,
-                    required: true,
-                  ) : const SizedBox(),
-                  SizedBox(height: widget.forGuest ? Dimensions.paddingSizeExtremeLarge : 0),
-
-                  CustomTextField(
-                    labelText: '${'street_number'.tr} (${'optional'.tr})',
-                    titleText: 'write_street_number'.tr,
-                    inputType: TextInputType.streetAddress,
-                    focusNode: _streetNode,
-                    nextFocus: _houseNode,
-                    controller: _streetNumberController,
-                  ),
-                  const SizedBox(height: Dimensions.paddingSizeExtremeLarge),
-
-                  Row(children: [
-                    Expanded(
-                      child: CustomTextField(
-                        labelText: '${'house'.tr} (${'optional'.tr})',
-                        titleText: 'write_house_number'.tr,
-                        inputType: TextInputType.text,
-                        focusNode: _houseNode,
-                        nextFocus: _floorNode,
-                        controller: _houseController,
-                      ),
-                    ),
-                    const SizedBox(width: Dimensions.paddingSizeExtremeLarge),
-
-                    Expanded(
-                      child: CustomTextField(
-                        labelText: "${'floor'.tr} (${'optional'.tr})",
-                        titleText: 'write_floor_number'.tr,
-                        inputType: TextInputType.text,
-                        focusNode: _floorNode,
-                        inputAction: TextInputAction.done,
-                        controller: _floorController,
-                      ),
-                    ),
-                  ]),
-
-                  const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                ]))),
-              )),
-
-              button(locationController),
+              _buildBottomActionBar(context, locationController),
             ]);
           });
         }) ,
       ),
+    );
+  }
+
+  void _openPickMap(LocationController locationController) {
+    if (ResponsiveHelper.isDesktop(Get.context)) {
+      Get.dialog(
+        Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 800,
+            height: 560,
+            child: PickMapScreen(
+              fromSignUp: false,
+              canRoute: false,
+              fromAddAddress: true,
+              route: null,
+              googleMapController: locationController.mapController,
+            ),
+          ),
+        ),
+      );
+    } else {
+      Get.toNamed(
+        RouteHelper.getPickMapRoute('add-address', false),
+        arguments: PickMapScreen(
+          fromAddAddress: true,
+          fromSignUp: false,
+          googleMapController: locationController.mapController,
+          route: null,
+          canRoute: false,
+        ),
+      );
+    }
+  }
+
+  Widget _buildMapCard(BuildContext context, LocationController locationController, {bool isDesktop = false}) {
+    final bool isDark = Get.isDarkMode;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Theme.of(context).disabledColor.withValues(alpha: 0.2) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: isDesktop ? 260 : 165,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              child: Stack(
+                children: [
+                  GoogleMap(
+                    initialCameraPosition: CameraPosition(target: _initialPosition, zoom: 16),
+                    minMaxZoomPreference: const MinMaxZoomPreference(0, 16),
+                    onTap: (latLng) => _openPickMap(locationController),
+                    zoomControlsEnabled: false,
+                    compassEnabled: false,
+                    indoorViewEnabled: true,
+                    mapToolbarEnabled: false,
+                    onCameraIdle: () {
+                      _idleDebouncer.run(() {
+                        if (!mounted) return;
+                        locationController.updatePosition(_cameraPosition, true);
+                      });
+                    },
+                    onCameraMove: (position) => _cameraPosition = position,
+                    onMapCreated: (GoogleMapController controller) {
+                      locationController.setMapController(controller);
+                      if (widget.address == null) {
+                        locationController.getCurrentLocation(true, mapController: controller);
+                      }
+                    },
+                    myLocationButtonEnabled: false,
+                    style: isDark ? Get.find<ThemeController>().darkMap : Get.find<ThemeController>().lightMap,
+                    gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                      Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+                      Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
+                      Factory<ScaleGestureRecognizer>(() => ScaleGestureRecognizer()),
+                      Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
+                      Factory<VerticalDragGestureRecognizer>(() => VerticalDragGestureRecognizer()),
+                    },
+                  ),
+                  if (locationController.loading)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    Center(
+                      child: Image.asset(Images.pickMarker, height: 48, width: 48),
+                    ),
+
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: InkWell(
+                      onTap: () => _openPickMap(locationController),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_location_alt_rounded, size: 14, color: primaryColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Change Pin',
+                              style: robotoMedium.copyWith(fontSize: 12, color: primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    bottom: 10,
+                    right: 10,
+                    child: InkWell(
+                      onTap: () => _checkPermission(() {
+                        locationController.getCurrentLocation(true, mapController: locationController.mapController);
+                      }),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(Icons.my_location_rounded, color: primaryColor, size: 18),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          InkWell(
+            onTap: () => _openPickMap(locationController),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.location_on_rounded, size: 18, color: primaryColor),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pin Location on Map',
+                          style: robotoRegular.copyWith(fontSize: 11, color: Theme.of(context).disabledColor),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _addressController.text.isNotEmpty ? _addressController.text : 'add_the_location_correctly'.tr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: robotoMedium.copyWith(
+                            fontSize: 13,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.chevron_right_rounded, size: 20, color: Theme.of(context).disabledColor),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveAsSection(BuildContext context, LocationController locationController) {
+    return _buildSectionCard(
+      context: context,
+      title: 'label_as'.tr,
+      icon: Icons.bookmark_outline_rounded,
+      subtitle: 'Select a tag for faster checkout',
+      children: [
+        Column(
+          children: [
+            _buildAddressTypeChip(
+              context: context,
+              index: 0,
+              label: 'home'.tr,
+              icon: Icons.home_rounded,
+              isSelected: locationController.addressTypeIndex == 0,
+              onTap: () {
+                setState(() => _otherSelect = false);
+                locationController.setAddressTypeIndex(0);
+              },
+            ),
+            const SizedBox(height: 10),
+            _buildAddressTypeChip(
+              context: context,
+              index: 1,
+              label: 'office'.tr,
+              icon: Icons.work_rounded,
+              isSelected: locationController.addressTypeIndex == 1,
+              onTap: () {
+                setState(() => _otherSelect = false);
+                locationController.setAddressTypeIndex(1);
+              },
+            ),
+            const SizedBox(height: 10),
+            _buildAddressTypeChip(
+              context: context,
+              index: 2,
+              label: 'others'.tr,
+              icon: Icons.location_on_rounded,
+              isSelected: locationController.addressTypeIndex == 2,
+              onTap: () {
+                setState(() => _otherSelect = true);
+                locationController.setAddressTypeIndex(2);
+              },
+            ),
+          ],
+        ),
+        if (_otherSelect) ...[
+          const SizedBox(height: 14),
+          _buildInputField(
+            context: context,
+            label: '${'level_name'.tr} (${'optional'.tr})',
+            hintText: "e.g. Dad's House, Gym, Friend",
+            prefixIcon: Icons.edit_note_rounded,
+            controller: _levelController,
+            focusNode: _levelNode,
+            nextFocus: _addressNode,
+            capitalization: TextCapitalization.words,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAddressTypeChip({
+    required BuildContext context,
+    required int index,
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final primaryColor = Theme.of(context).primaryColor;
+    final isDark = Get.isDarkMode;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? primaryColor.withValues(alpha: isDark ? 0.15 : 0.08)
+              : (isDark ? Theme.of(context).cardColor : Colors.white),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? primaryColor
+                : (isDark ? Theme.of(context).disabledColor.withValues(alpha: 0.2) : const Color(0xFFE2E8F0)),
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected ? primaryColor : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: robotoMedium.copyWith(
+                  fontSize: 14,
+                  color: isSelected ? primaryColor : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(
+              isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+              size: 20,
+              color: isSelected ? primaryColor : Theme.of(context).disabledColor.withValues(alpha: 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required BuildContext context,
+    required String label,
+    required String hintText,
+    required TextEditingController controller,
+    FocusNode? focusNode,
+    FocusNode? nextFocus,
+    TextInputType inputType = TextInputType.text,
+    TextInputAction inputAction = TextInputAction.next,
+    IconData? prefixIcon,
+    Widget? prefixWidget,
+    Widget? suffixWidget,
+    bool isRequired = false,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    Function(String)? onChanged,
+    TextCapitalization capitalization = TextCapitalization.none,
+  }) {
+    final bool isDark = Get.isDarkMode;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: robotoMedium.copyWith(
+                fontSize: 13,
+                color: isDark ? Colors.white70 : const Color(0xFF475569),
+              ),
+            ),
+            if (isRequired)
+              const Text(' *', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: isDark ? Theme.of(context).cardColor : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? Theme.of(context).disabledColor.withValues(alpha: 0.2) : const Color(0xFFE2E8F0),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              if (prefixWidget != null)
+                prefixWidget
+              else if (prefixIcon != null) ...[
+                const SizedBox(width: 12),
+                Icon(prefixIcon, size: 18, color: const Color(0xFF94A3B8)),
+                const SizedBox(width: 8),
+              ] else
+                const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  readOnly: readOnly,
+                  onTap: onTap,
+                  keyboardType: inputType,
+                  textInputAction: nextFocus != null ? inputAction : TextInputAction.done,
+                  textCapitalization: capitalization,
+                  onChanged: onChanged,
+                  onSubmitted: (_) {
+                    if (nextFocus != null) {
+                      FocusScope.of(context).requestFocus(nextFocus);
+                    }
+                  },
+                  style: robotoRegular.copyWith(
+                    fontSize: 14,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: robotoRegular.copyWith(
+                      fontSize: 14,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 0),
+                  ),
+                ),
+              ),
+              if (suffixWidget != null)
+                suffixWidget
+              else
+                const SizedBox(width: 12),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddressDetailsCard(BuildContext context, LocationController locationController) {
+    final String addressLabel = widget.fromRide ||
+            (Get.find<SplashController>().module != null &&
+                Get.find<SplashController>().module!.moduleType.toString() == AppConstants.taxi)
+        ? 'pickup_address'.tr
+        : 'delivery_address'.tr;
+
+    return _buildSectionCard(
+      context: context,
+      title: 'Address Details',
+      icon: Icons.location_city_rounded,
+      subtitle: 'Accurate details help riders reach quickly',
+      children: [
+        _buildInputField(
+          context: context,
+          label: addressLabel,
+          hintText: 'write_delivery_address'.tr,
+          controller: _addressController,
+          focusNode: _addressNode,
+          nextFocus: _houseNode,
+          isRequired: true,
+          prefixIcon: Icons.my_location_rounded,
+          onChanged: (text) => locationController.setPlaceMark(text),
+        ),
+        const SizedBox(height: 14),
+        _buildInputField(
+          context: context,
+          label: '${'house'.tr} (${'optional'.tr})',
+          hintText: 'e.g. 402, Block A',
+          prefixIcon: Icons.home_outlined,
+          controller: _houseController,
+          focusNode: _houseNode,
+          nextFocus: _floorNode,
+        ),
+        const SizedBox(height: 14),
+        _buildInputField(
+          context: context,
+          label: "${'floor'.tr} (${'optional'.tr})",
+          hintText: 'e.g. 4th Floor',
+          prefixIcon: Icons.stairs_outlined,
+          controller: _floorController,
+          focusNode: _floorNode,
+          nextFocus: _streetNode,
+        ),
+        const SizedBox(height: 14),
+        _buildInputField(
+          context: context,
+          label: '${'street_number'.tr} (${'optional'.tr})',
+          hintText: 'e.g. Near Apollo Hospital, Main Road',
+          prefixIcon: Icons.signpost_outlined,
+          controller: _streetNumberController,
+          focusNode: _streetNode,
+          nextFocus: _nameNode,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactDetailsCard(BuildContext context, LocationController locationController) {
+    return _buildSectionCard(
+      context: context,
+      title: 'Contact Details',
+      icon: Icons.person_outline_rounded,
+      subtitle: 'Person receiving the order',
+      children: [
+        _buildInputField(
+          context: context,
+          label: 'contact_person_name'.tr,
+          hintText: 'e.g. Full Name',
+          prefixIcon: Icons.person_outline_rounded,
+          controller: _contactPersonNameController,
+          focusNode: _nameNode,
+          nextFocus: _numberNode,
+          capitalization: TextCapitalization.words,
+          isRequired: true,
+        ),
+        const SizedBox(height: 14),
+        _buildInputField(
+          context: context,
+          label: 'contact_person_number'.tr,
+          hintText: 'write_number'.tr,
+          controller: _contactPersonNumberController,
+          focusNode: _numberNode,
+          nextFocus: widget.forGuest ? _emailFocus : null,
+          inputAction: widget.forGuest ? TextInputAction.next : TextInputAction.done,
+          inputType: TextInputType.phone,
+          isRequired: true,
+          prefixWidget: Container(
+            height: 48,
+            padding: const EdgeInsets.only(left: 8, right: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CodePickerWidget(
+                  flagWidth: 22,
+                  padding: EdgeInsets.zero,
+                  onChanged: (CountryCode countryCode) {
+                    _countryDialCode = countryCode.dialCode;
+                  },
+                  initialSelection: _countryDialCode ?? Get.find<LocalizationController>().locale.countryCode,
+                  favorite: [_countryDialCode ?? ''],
+                  enabled: Get.find<SplashController>().configModel?.countryPickerStatus,
+                  dialogBackgroundColor: Theme.of(context).cardColor,
+                  textStyle: robotoMedium.copyWith(
+                    fontSize: 13,
+                    color: Theme.of(context).textTheme.bodyMedium!.color,
+                  ),
+                ),
+                Container(
+                  height: 20,
+                  width: 1,
+                  color: const Color(0xFFCBD5E1),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (widget.forGuest) ...[
+          const SizedBox(height: 14),
+          _buildInputField(
+            context: context,
+            label: 'email'.tr,
+            hintText: 'e.g. name@example.com',
+            controller: _emailController,
+            focusNode: _emailFocus,
+            inputAction: TextInputAction.done,
+            inputType: TextInputType.emailAddress,
+            prefixIcon: Icons.mail_outline_rounded,
+            isRequired: true,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionCard({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    String? subtitle,
+    required List<Widget> children,
+  }) {
+    final bool isDark = Get.isDarkMode;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Theme.of(context).disabledColor.withValues(alpha: 0.2) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: Theme.of(context).primaryColor),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: robotoBold.copyWith(
+                  fontSize: 15,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: robotoRegular.copyWith(fontSize: 12, color: Theme.of(context).disabledColor),
+            ),
+          ],
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar(BuildContext context, LocationController locationController, {bool isDesktop = false}) {
+    final bool isDark = Get.isDarkMode;
+
+    Widget buttonWidget = GetBuilder<AddressController>(
+      builder: (addressController) {
+        final bool isLoading = addressController.isLoading;
+        final String buttonText = widget.forGuest
+            ? 'done'.tr
+            : widget.address == null
+                ? 'save_location'.tr
+                : 'update_address'.tr;
+
+        return SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : () => _onSaveOrUpdateButtonPressed(locationController),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        widget.address == null ? Icons.add_location_alt_rounded : Icons.check_circle_outline_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        buttonText,
+                        style: robotoBold.copyWith(fontSize: 16, color: Colors.white),
+                      ),
+                    ],
+                  ),
+          ),
+        );
+      },
+    );
+
+    if (isDesktop) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        child: buttonWidget,
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom + 6 : 16,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Theme.of(context).disabledColor.withValues(alpha: 0.2) : const Color(0xFFF1F5F9),
+            width: 1,
+          ),
+        ),
+      ),
+      child: buttonWidget,
     );
   }
 

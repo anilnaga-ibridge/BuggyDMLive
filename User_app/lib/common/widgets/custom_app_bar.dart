@@ -56,6 +56,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               onBackPressed!();
             } else if (Navigator.canPop(context)) {
               Navigator.pop(context);
+            } else if (Get.key.currentState?.canPop() ?? false) {
+              Get.back();
+            } else if (Get.previousRoute.isNotEmpty && Get.previousRoute != Get.currentRoute && Get.previousRoute != '/') {
+              Get.back();
             } else {
               Get.offAllNamed(RouteHelper.getInitialRoute());
             }

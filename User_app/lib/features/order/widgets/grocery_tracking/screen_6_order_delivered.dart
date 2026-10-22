@@ -59,7 +59,15 @@ class Screen6OrderDelivered extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F2937), size: 20),
-          onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+          onPressed: onBack ?? () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else if (Get.key.currentState?.canPop() ?? false) {
+              Get.back();
+            } else {
+              Get.offAllNamed(RouteHelper.getInitialRoute());
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(

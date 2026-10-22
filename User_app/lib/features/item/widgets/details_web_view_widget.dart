@@ -633,7 +633,11 @@ class _DetailsWebViewWidgetState extends State<DetailsWebViewWidget> {
     }
 
     if (!isCampaign && item.imagesFullUrl != null && item.imagesFullUrl!.isNotEmpty) {
-      mediaList.addAll(item.imagesFullUrl!.where((url) => url.isNotEmpty));
+      for (final url in item.imagesFullUrl!) {
+        if (url.isNotEmpty && !mediaList.contains(url)) {
+          mediaList.add(url);
+        }
+      }
     }
 
     return mediaList;

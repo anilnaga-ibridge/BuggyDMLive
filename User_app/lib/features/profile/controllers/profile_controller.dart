@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:sixam_mart/features/cart/controllers/cart_controller.dart';
 import 'package:sixam_mart/features/favourite/controllers/favourite_controller.dart';
 import 'package:sixam_mart/features/chat/domain/models/conversation_model.dart';
@@ -24,6 +25,9 @@ class ProfileController extends GetxController implements GetxService {
   XFile? _pickedFile;
   XFile? get pickedFile => _pickedFile;
 
+  Uint8List? _rawFile;
+  Uint8List? get rawFile => _rawFile;
+
   bool get proStatus => _userInfoModel?.proStatus ?? false;
 
   bool _isLoading = false;
@@ -31,6 +35,7 @@ class ProfileController extends GetxController implements GetxService {
 
   Future<void> getUserInfo() async {
     _pickedFile = null;
+    _rawFile = null;
     UserInfoModel? userInfoModel = await profileServiceInterface.getUserInfo();
     if (userInfoModel != null) {
       _userInfoModel = userInfoModel;
@@ -98,6 +103,7 @@ class ProfileController extends GetxController implements GetxService {
         Get.back();
       }
       _pickedFile = null;
+      _rawFile = null;
       showCustomSnackBar(responseModel.message, isError: false);
     }  else if(!responseModel.isSuccess && responseModel.updateProfileResponseModel != null){
       if(Get.isDialogOpen!) {
@@ -127,11 +133,15 @@ class ProfileController extends GetxController implements GetxService {
 
   void pickImage() async {
     _pickedFile = await profileServiceInterface.pickImageFromGallery();
+    if (_pickedFile != null) {
+      _rawFile = await _pickedFile!.readAsBytes();
+    }
     update();
   }
 
   void initData({bool isUpdate = false}) {
     _pickedFile = null;
+    _rawFile = null;
     if(isUpdate){
       update();
     }
@@ -163,6 +173,8 @@ class ProfileController extends GetxController implements GetxService {
 
   void clearUserInfo() {
     _userInfoModel = null;
+    _pickedFile = null;
+    _rawFile = null;
     update();
   }
 

@@ -11,6 +11,8 @@ class PermissionDialogWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isWeb = ResponsiveHelper.isWeb();
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.radiusSmall)),
       insetPadding: const EdgeInsets.all(30),
@@ -24,13 +26,46 @@ class PermissionDialogWidget extends StatelessWidget {
             Icon(Icons.add_location_alt_rounded, color: Theme.of(context).primaryColor, size: 100),
             const SizedBox(height: Dimensions.paddingSizeLarge),
 
-            ResponsiveHelper.isMobile(context) ? Text(
-              'you_denied_location_permission'.tr, textAlign: TextAlign.center,
-              style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeLarge),
-            ) : Text(
-              'please_enable_location_permission_from_browser_settings'.tr, textAlign: TextAlign.center,
+            Text(
+              isWeb
+                  ? 'please_enable_location_permission_from_browser_settings'.tr
+                  : 'you_denied_location_permission'.tr,
+              textAlign: TextAlign.center,
               style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeLarge),
             ),
+
+            if (isWeb) ...[
+              const SizedBox(height: Dimensions.paddingSizeDefault),
+              Container(
+                padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
+                  border: Border.all(color: Theme.of(context).primaryColor.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 20, color: Theme.of(context).primaryColor),
+                        const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+                        Text(
+                          'How to allow location:',
+                          style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).primaryColor),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+                    Text(
+                      '1. Click the lock / tune icon (🔒) on the left side of your browser address bar.\n2. Set Location permission to "Allow".\n3. Reload this page to update your location.',
+                      style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: Dimensions.paddingSizeLarge),
 
             Row(children: [
@@ -45,10 +80,21 @@ class PermissionDialogWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: Dimensions.paddingSizeSmall),
-              ResponsiveHelper.isMobile(context) ? Expanded(child: CustomButton(buttonText: 'settings'.tr, onPressed: () async {
-                await Geolocator.openAppSettings();
-                Get.back();
-              })) : const SizedBox(),
+              Expanded(
+                child: CustomButton(
+                  buttonText: isWeb ? 'ok'.tr : 'settings'.tr,
+                  onPressed: () async {
+                    Get.back();
+                    if (!isWeb) {
+                      try {
+                        await Geolocator.openAppSettings();
+                      } catch (e) {
+                        debugPrint('Error opening app settings: $e');
+                      }
+                    }
+                  },
+                ),
+              ),
             ]),
 
           ]),

@@ -849,18 +849,18 @@ class RouteHelper {
     GetPage(name: addAddress, page: () => getRoute(AddAddressScreen(
       fromCheckout: Get.parameters['page'] == 'checkout',
       fromRide: Get.parameters['ride'] == 'true',
-      zoneId: int.parse(Get.parameters['zone_id']!),
+      zoneId: int.tryParse(Get.parameters['zone_id'] ?? '') ?? 0,
       fromNavBar: Get.parameters['navbar'] == 'true',
-    ))),
+    ), byPuss: true)),
     GetPage(name: editAddress, page: () {
       AddressModel? data;
-      if (Get.parameters['data'] != 'null') {
+      if (Get.parameters['data'] != null && Get.parameters['data'] != 'null') {
         data = AddressModel.fromJson(jsonDecode(utf8.decode(base64Url.decode(Get.parameters['data']!.replaceAll(' ', '+')))));
       }
       return getRoute(AddAddressScreen(
         fromCheckout: false, fromRide: false,
         address: data, forGuest: Get.parameters['from-guest'] == 'true',
-      ));
+      ), byPuss: true);
     }),
     GetPage(name: rateReview, page: () {
       if (Get.arguments is Widget) {

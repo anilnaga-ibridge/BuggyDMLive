@@ -12686,4 +12686,6 @@ Smartly or Earn. ',
   'Quick Grocery' => 'Quick Grocery',
   'Quick food' => 'Quick food',
   'Quick Ecom' => 'Quick Ecom',
+  'Item added to favorites' => 'Item added to favorites',
+  'Store removed from favorites' => 'Store removed from favorites',
 );

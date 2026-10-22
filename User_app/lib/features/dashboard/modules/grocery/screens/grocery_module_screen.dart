@@ -10,6 +10,7 @@ import 'package:sixam_mart/features/dashboard/widgets/last_orders_section_widget
 import 'package:sixam_mart/features/dashboard/widgets/sliver_gap.dart';
 import 'package:sixam_mart/features/home/controllers/home_controller.dart';
 import 'package:sixam_mart/features/order/controllers/order_controller.dart';
+import 'package:sixam_mart/features/store/controllers/store_controller.dart';
 import 'package:sixam_mart/theme/buggy_cxp_theme_extension.dart';
 import 'package:sixam_mart/util/app_constants.dart';
 import 'package:sixam_mart/util/dimensions.dart';
@@ -43,6 +44,10 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
       
       if (Get.isRegistered<CxpExperienceController>()) {
         Get.find<CxpExperienceController>().fetchExperience(page: 'home', module: 'grocery');
+      }
+
+      if (Get.isRegistered<StoreController>() && Get.find<StoreController>().storeModel == null) {
+        Get.find<StoreController>().getStoreList(1, false);
       }
     });
   }
@@ -78,16 +83,14 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
         SliverToBoxAdapter(
           child: GetBuilder<CxpExperienceController>(
             builder: (cxpController) {
-              final bool isSectionEnabled = cxpController.isSectionEnabled('flavour_fest') ||
-                  cxpController.isSectionEnabled('hero_fest_deals');
-              if (!isSectionEnabled) {
-                return const SizedBox.shrink();
-              }
               final heroSection = cxpController.activeSections.firstWhereOrNull(
                 (s) => s.id.toLowerCase().contains('hero') || s.id.toLowerCase().contains('flavour'),
               );
+              if (heroSection == null) {
+                return const SizedBox.shrink();
+              }
               return GroceryFlavourFestWidget(
-                initialProps: heroSection?.widgets.isNotEmpty == true ? heroSection!.widgets.first.props : null,
+                initialProps: heroSection.widgets.isNotEmpty ? heroSection.widgets.first.props : null,
               );
             },
           ),
@@ -97,7 +100,7 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
         GetBuilder<CxpExperienceController>(
           builder: (cxpController) {
             final activeSections = cxpController.activeSections
-                .where((s) => !s.id.toLowerCase().contains('hero') && !s.id.toLowerCase().contains('flavour'))
+                .where((s) => CxpSectionRenderer.canRender(s) && !s.id.toLowerCase().contains('hero') && !s.id.toLowerCase().contains('flavour'))
                 .toList();
 
             if (activeSections.isEmpty) {
@@ -135,7 +138,7 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
           },
         ),
 
-        // 3. Last Orders Section (collapses when empty)
+        // 4. Last Orders Section (collapses when empty)
         GetBuilder<OrderController>(builder: (controller) {
           final visible = controller.lastOrders?.isNotEmpty ?? false;
           return _conditionalSection(visible: visible, slivers: [
@@ -144,7 +147,7 @@ class _GroceryModuleScreenState extends State<GroceryModuleScreen> {
           ]);
         }),
 
-        // 4. Explore Stores (at bottom)
+        // 5. Explore Stores (at bottom)
         ExploreRestaurantSection(
           exploreRestaurantKey: widget.exploreRestaurantKey,
           scrollController: widget.scrollController,

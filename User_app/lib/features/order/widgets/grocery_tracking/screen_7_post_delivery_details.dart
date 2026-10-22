@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:sixam_mart/common/widgets/custom_button.dart';
 import 'package:sixam_mart/common/widgets/custom_image.dart';
 import 'package:sixam_mart/features/order/domain/models/order_details_model.dart';
 import 'package:sixam_mart/features/order/domain/models/order_model.dart';
+import 'package:sixam_mart/helper/route_helper.dart';
 import 'package:sixam_mart/features/order/widgets/grocery_tracking/grocery_stepper_widget.dart';
 import 'package:sixam_mart/helper/price_converter.dart';
 import 'package:sixam_mart/util/dimensions.dart';
@@ -65,7 +67,7 @@ class Screen7PostDeliveryDetails extends StatelessWidget {
     final String deliveryAddress = order?.deliveryAddress?.address ?? 'H.No. 45, Sector 62, Noida 201301';
 
     final items = (orderDetails != null && orderDetails!.isNotEmpty) ? orderDetails! : null;
-    final int itemsCount = items != null ? items.length : 2;
+    final int itemsCount = items != null ? items.length : (order?.detailsCount ?? order?.itemCount ?? 1);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -74,7 +76,15 @@ class Screen7PostDeliveryDetails extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F2937), size: 20),
-          onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+          onPressed: onBack ?? () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else if (Get.key.currentState?.canPop() ?? false) {
+              Get.back();
+            } else {
+              Get.offAllNamed(RouteHelper.getInitialRoute());
+            }
+          },
         ),
         title: Text(
           'Order Details',
@@ -305,15 +315,9 @@ class Screen7PostDeliveryDetails extends StatelessWidget {
                 children: [
                   if (items != null)
                     ...items.map((detail) => _buildRealItemRow(detail))
+                  else if (order != null && (order!.detailsCount ?? 0) > 0)
+                    ...List.generate(order!.detailsCount!.clamp(1, 3), (index) => _buildShimmerItemRow())
                   else ...[
-                    _buildFallbackItemRow(
-                      name: 'Koparo Clean Natural All-Purpose Cleaner',
-                      price: '₹ 897',
-                      qty: 'Qty: 1',
-                      icon: Icons.cleaning_services_rounded,
-                      iconColor: Colors.teal,
-                    ),
-                    const Divider(height: 20, color: Color(0xFFF3F4F6)),
                     _buildFallbackItemRow(
                       name: 'Cool Drinks',
                       price: '₹ 20',
@@ -342,9 +346,61 @@ class Screen7PostDeliveryDetails extends StatelessWidget {
     );
   }
 
+  Widget _buildShimmerItemRow() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 130,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: 60,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 48,
+            height: 22,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRealItemRow(OrderDetailsModel detail) {
     final String imageUrl = detail.imageFullUrl ?? '';
     final double price = (detail.price ?? 0) * (detail.quantity ?? 1);
+    final String itemKey = detail.id?.toString() ?? detail.itemDetails?.id?.toString() ?? imageUrl;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -353,6 +409,7 @@ class Screen7PostDeliveryDetails extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: CustomImage(
+              key: ValueKey(itemKey.isNotEmpty ? itemKey : 'detail_${detail.hashCode}'),
               image: imageUrl,
               height: 50,
               width: 50,

@@ -142,28 +142,12 @@ class OrderTrackingScreenState extends State<OrderTrackingScreen> with WidgetsBi
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(title: 'order_tracking'.tr),
-      endDrawer: const MenuDrawer(),endDrawerEnableOpenDragGesture: false,
-      body: GetBuilder<OrderController>(builder: (orderController) {
-        OrderModel? track;
-        if(orderController.trackModel != null) {
-          track = orderController.trackModel;
+    return GetBuilder<OrderController>(builder: (orderController) {
+      OrderModel? track;
+      if(orderController.trackModel != null) {
+        track = orderController.trackModel;
 
-          if(track!.orderType != 'parcel') {
-            if (track.store!.storeBusinessModel == 'commission') {
-              showChatPermission = true;
-            } else if (track.store!.storeSubscription != null && track.store!.storeBusinessModel == 'subscription') {
-              showChatPermission = track.store!.storeSubscription!.chat == 1;
-            } else {
-              showChatPermission = false;
-            }
-          } else {
-            showChatPermission = AuthHelper.isLoggedIn();
-          }
-        }
-
-        if (track != null && track.orderType != 'parcel') {
+        if (track!.orderType != 'parcel') {
           return GroceryOrderFlowScreen(
             orderId: int.tryParse(widget.orderID ?? '') ?? (track.id ?? 0),
             orderModel: track,
@@ -172,7 +156,21 @@ class OrderTrackingScreenState extends State<OrderTrackingScreen> with WidgetsBi
           );
         }
 
-        return track != null ? SingleChildScrollView(
+        if (track.store!.storeBusinessModel == 'commission') {
+          showChatPermission = true;
+        } else if (track.store!.storeSubscription != null && track.store!.storeBusinessModel == 'subscription') {
+          showChatPermission = track.store!.storeSubscription!.chat == 1;
+        } else {
+          showChatPermission = false;
+        }
+      } else {
+        showChatPermission = AuthHelper.isLoggedIn();
+      }
+
+      return Scaffold(
+        appBar: CustomAppBar(title: 'order_tracking'.tr),
+        endDrawer: const MenuDrawer(),endDrawerEnableOpenDragGesture: false,
+        body: track != null ? SingleChildScrollView(
           physics: isHovered || !ResponsiveHelper.isDesktop(context) ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
           child: FooterView(
             child: Center(child: SizedBox(width: Dimensions.webMaxWidth, height: ResponsiveHelper.isDesktop(context) ? 700 : MediaQuery.of(context).size.height * 0.85, child: Stack(children: [
@@ -256,9 +254,9 @@ class OrderTrackingScreenState extends State<OrderTrackingScreen> with WidgetsBi
 
             ]))),
           ),
-        ) : const Center(child: CircularProgressIndicator());
-      }),
-    );
+        ) : const Center(child: CircularProgressIndicator()),
+      );
+    });
   }
 
   void setMarker(Store? store, DeliveryMan? deliveryMan, AddressModel? addressModel, bool takeAway, bool parcel, bool isRestaurant, {AddressModel? currentAddress, bool fromCurrentLocation = false}) async {

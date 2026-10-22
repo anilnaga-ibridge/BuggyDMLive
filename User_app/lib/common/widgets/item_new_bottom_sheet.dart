@@ -739,10 +739,14 @@ class _ItemNewBottomSheetState extends State<ItemNewBottomSheet> {
       );
     }
     final String imageUrl = mediaUrl;
-    if (imageUrl.toLowerCase().endsWith('.svg')) {
-      return SvgPicture.network(imageUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
-    }
-    return CustomImage(image: imageUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
+    return Container(
+      color: Theme.of(context).cardColor,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeLarge, vertical: Dimensions.paddingSizeSmall),
+      child: imageUrl.toLowerCase().endsWith('.svg')
+          ? SvgPicture.network(imageUrl, fit: BoxFit.contain)
+          : CustomImage(image: imageUrl, fit: BoxFit.contain, placeholder: Images.placeholder),
+    );
   }
 
   Widget _mediaArrowButton({required IconData icon, required VoidCallback onTap}) {
@@ -818,7 +822,11 @@ class _ItemNewBottomSheetState extends State<ItemNewBottomSheet> {
       mediaList.add(item.imageFullUrl!);
     }
     if (!isCampaign && item.imagesFullUrl != null && item.imagesFullUrl!.isNotEmpty) {
-      mediaList.addAll(item.imagesFullUrl!.where((url) => url.isNotEmpty));
+      for (final url in item.imagesFullUrl!) {
+        if (url.isNotEmpty && !mediaList.contains(url)) {
+          mediaList.add(url);
+        }
+      }
     }
     return mediaList;
   }
