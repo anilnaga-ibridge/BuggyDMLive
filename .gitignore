@@ -23,6 +23,14 @@
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
 **/.packages
+**/google-services.json
+!**/google-services.json.example
+**/GoogleService-Info.plist
+!**/GoogleService-Info.plist.example
+**/web/env.js
+!**/web/env.example.js
+**/Env.xcconfig
+!**/Env.xcconfig.example
 
 # BuggyDM generated/dependency files
 BuggyDM/node_modules/

@@ -46,7 +46,17 @@
        application. For more information, see:
        https://developers.google.com/web/fundamentals/primers/service-workers -->
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDiDGVR1GnClPIXcsOOvAniamtAmS-MHjY"></script>
+  <script src="env.js"></script>
+  <script>
+    (function () {
+      var mapsKey = (window.ENV && window.ENV.GOOGLE_MAPS_WEB_API_KEY) ? window.ENV.GOOGLE_MAPS_WEB_API_KEY : '';
+      if (mapsKey && !mapsKey.startsWith('YOUR_')) {
+        var script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey);
+        document.head.appendChild(script);
+      }
+    })();
+  </script>
   <!--  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>-->
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

@@ -11,7 +11,12 @@ import FBSDKCoreKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     FirebaseApp.configure()
-    GMSServices.provideAPIKey("AIzaSyCaCSJ0BZItSyXqBv8vpD1N4WBffJeKhLQ")
+    let mapsApiKey = (Bundle.main.object(forInfoDictionaryKey: "GoogleMapsAPIKey") as? String)
+      ?? ProcessInfo.processInfo.environment["GOOGLE_MAPS_IOS_API_KEY"]
+      ?? ""
+    if !mapsApiKey.isEmpty && !mapsApiKey.hasPrefix("YOUR_") {
+      GMSServices.provideAPIKey(mapsApiKey)
+    }
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     }

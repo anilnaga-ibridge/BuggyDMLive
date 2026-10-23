@@ -51,23 +51,19 @@ Future<void> main() async {
   };*/
 
   if(GetPlatform.isWeb){
-    await Firebase.initializeApp(options: const FirebaseOptions(
-        apiKey: "AIzaSyD0Z911mOoWCVkeGdjhIKwWFPRgvd6ZyAw",
-        authDomain: "stackmart-500c7.firebaseapp.com",
-        projectId: "stackmart-500c7",
-        storageBucket: "stackmart-500c7.appspot.com",
-        messagingSenderId: "491987943015",
-        appId: "1:491987943015:web:d8bc7ab8dbc9991c8f1ec2"
-    ));
-  } else if(GetPlatform.isAndroid) {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyCc3OCd5I2xSlnftZ4bFAbuCzMhgQHLivA",
-        appId: "1:491987943015:android:a6fb4303cc4bf3d18f1ec2",
-        messagingSenderId: "491987943015",
-        projectId: "stackmart-500c7",
-      ),
-    );
+    const String firebaseWebApiKey = String.fromEnvironment('FIREBASE_WEB_API_KEY');
+    if (firebaseWebApiKey.isNotEmpty) {
+      await Firebase.initializeApp(options: const FirebaseOptions(
+          apiKey: firebaseWebApiKey,
+          authDomain: String.fromEnvironment('FIREBASE_WEB_AUTH_DOMAIN', defaultValue: "stackmart-500c7.firebaseapp.com"),
+          projectId: String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: "stackmart-500c7"),
+          storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET', defaultValue: "stackmart-500c7.appspot.com"),
+          messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID', defaultValue: "491987943015"),
+          appId: String.fromEnvironment('FIREBASE_WEB_APP_ID', defaultValue: "1:491987943015:web:d8bc7ab8dbc9991c8f1ec2")
+      ));
+    } else {
+      await Firebase.initializeApp();
+    }
   } else {
     await Firebase.initializeApp();
   }

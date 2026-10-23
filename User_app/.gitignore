@@ -49,6 +49,12 @@ sync-branch.sh
 ios/Runner.xcworkspace/xcshareddata/swiftpm/
 
 # Web related
+web/env.js
+!web/env.example.js
+
+# iOS environment config
+ios/Flutter/Env.xcconfig
+!ios/Flutter/Env.xcconfig.example
 
 # Symbolication related
 app.*.symbols

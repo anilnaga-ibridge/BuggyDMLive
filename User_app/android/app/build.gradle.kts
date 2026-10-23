@@ -15,6 +15,12 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
 android {
     namespace = "com.sixamtech.sixam_mart_user"
     compileSdk = 36
@@ -37,6 +43,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+
+        val mapsApiKey = localProperties.getProperty("maps.apiKey")
+            ?: System.getenv("GOOGLE_MAPS_ANDROID_API_KEY")
+            ?: ""
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     signingConfigs {
